@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Teacher Dashboard</title>
+    <script>
+        function showStatus(studentId) {
+            var panel = document.getElementById('status_' + studentId);
+            if (!panel) return;
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        }
+    </script>
+</head>
+<body>
+<h2>Welcome, <span th:text="${teacher.firstName + ' ' + teacher.lastName}">Teacher</span></h2>
+
+<form th:action="@{/teacher/save}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+    <table border="1" cellpadding="4">
+        <thead>
+        <tr>
+            <th>Full name</th>
+            <th>Student ID</th>
+            <th>Package</th>
+            <th>Remaining lessons</th>
+            <th>Check-in time</th>
+            <th>Current status</th>
+            <th>Mark</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${students}">
+            <td>
+                <a href="javascript:void(0)"
+                   th:text="${s.firstName + ' ' + s.lastName}"
+                   th:onclick="'showStatus(' + ${s.id} + ')'"></a>
+
+                <!-- build local variables step-by-step to avoid SpEL parsing issues -->
+                <div th:id="'status_' + ${s.id}" style="display:none;margin-top:6px;"
+                     th:with="payments=${paymentsMap != null && paymentsMap.containsKey(s.id) ? paymentsMap[s.id] : null}">
+                    <div th:with="missed=${missedMap != null && missedMap.containsKey(s.id) ? missedMap[s.id] : 0}">
+                        <div th:with="teacherName=${teacher.firstName + ' ' + teacher.lastName}">
+                            <!-- fragment will pick up 'student' from context (s) and 'missed','teacherName','payments' we declared above -->
+                            <div th:with="student=${s}" th:insert="fragments/student_status :: student_status"></div>
+                        </div>
+                    </div>
+                </div>
+            </td>
+
+            <td th:text="${s.studentCode}">CODE</td>
+            <td th:text="${s.packageType}">PACKAGE</td>
+            <td>
+                <span th:if="${s.packageType != null and s.packageType.name() == 'UNLIMITED'}">∞</span>
+                <span th:unless="${s.packageType != null and s.packageType.name() == 'UNLIMITED'}"
+                      th:text="${s.remainingLessons != null ? s.remainingLessons : 0}">0</span>
+            </td>
+            <td th:text="${todays != null and todays.containsKey(s.id) ? todays[s.id].checkinTime : '-'}">-</td>
+            <td th:text="${todays != null and todays.containsKey(s.id) ? todays[s.id].status : '-'}">-</td>
+            <td>
+                <label th:each="st : ${attendanceStatuses}">
+                    <input type="radio"
+                           th:name="${'status_' + s.id}"
+                           th:value="${st}"
+                           th:checked="${todays != null and todays.containsKey(s.id) and todays[s.id].status == st}"/>
+                    <span th:text="${st}">P</span>
+                </label>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top:10px;">
+        <button type="submit">Save</button>
+    </div>
+</form>
+</body>
+</html>

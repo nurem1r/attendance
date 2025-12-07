@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/></head>
+<body>
+<h2>Student List</h2>
+<form th:action="@{/manager/student_list}" method="get">
+    <input type="text" name="q" placeholder="Search by name or code" th:value="${param.q}"/>
+    <button type="submit">Search</button>
+</form>
+
+<table border="1" cellpadding="4">
+    <thead>
+    <tr>
+        <th>ФИО</th>
+        <th>Student ID</th>
+        <th>Teacher Name</th>
+        <th>Package</th>
+        <th>Remaining</th>
+        <th>Debt</th>
+        <th>MissedThisMonth</th>
+        <th>Delete</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="s : ${students}" th:classappend="${s.remainingLessons != null and s.remainingLessons < 4} ? 'low'">
+        <td th:text="${s.firstName + ' ' + s.lastName}">Name</td>
+        <td th:text="${s.studentCode}">CODE</td>
+        <td th:text="${teacherMap != null && teacherMap[s.teacherId] != null ? teacherMap[s.teacherId].firstName + ' ' + teacherMap[s.teacherId].lastName : '-'}">Teacher</td>
+        <td th:text="${s.packageType}">PKG</td>
+        <td>
+            <span th:if="${s.packageType != null and s.packageType.name() == 'UNLIMITED'}">∞</span>
+            <span th:unless="${s.packageType != null and s.packageType.name() == 'UNLIMITED'}" th:text="${s.remainingLessons != null ? s.remainingLessons : 0}">0</span>
+        </td>
+        <td th:text="${s.debt != null ? s.debt : 0}">0</td>
+        <td th:text="${missedMap != null ? missedMap[s.id] : 0}">0</td>
+        <td>
+            <form th:action="@{|/manager/student_delete/${s.id}|}" method="post" th:onsubmit="return confirm('Delete?')">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <button type="submit">Delete</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<style>
+    .low { background: #ffe5e5; }
+</style>
+</body>
+</html>

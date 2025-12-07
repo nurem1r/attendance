@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/></head>
+<body>
+<h2 th:text="${teacher.firstName + ' ' + teacher.lastName + ' - Slots'}">Slots</h2>
+
+<div style="display:flex;flex-wrap:wrap;">
+    <div th:each="slot : ${slots}" style="border:1px solid #ccc;padding:8px;margin:5px;width:30%;">
+        <h4 th:text="${slot.label}">08:00-09:00</h4>
+        <p>Students in slot:</p>
+        <ul>
+            <li th:each="s : ${studentsBySlot != null and studentsBySlot[slot.id] != null ? studentsBySlot[slot.id] : T(java.util.Collections).emptyList()}"
+                th:text="${s.firstName + ' ' + s.lastName}">Student</li>
+            <li th:if="${studentsBySlot == null or studentsBySlot[slot.id] == null or #lists.isEmpty(studentsBySlot[slot.id])}">No students</li>
+        </ul>
+        <div>
+            <label>Move student:
+                <select>
+                    <option>--</option>
+                </select>
+            </label>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

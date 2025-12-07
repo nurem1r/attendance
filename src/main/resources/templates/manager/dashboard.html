@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Manager Dashboard</title>
+</head>
+<body>
+<h2>Manager Dashboard</h2>
+<div>
+    <a th:href="@{/manager/add_student}">Add Student</a> |
+    <a th:href="@{/manager/add_teacher}">Add Teacher</a> |
+    <a th:href="@{/manager/student_list}">Student List</a> |
+    <a th:href="@{/manager/teacher_list}">Teacher List</a>
+</div>
+
+<div style="margin-top:20px;">
+    <h3>Teachers</h3>
+    <div th:each="t : ${teachers}" style="border:1px solid #ccc;padding:10px;margin:5px;">
+        <p><strong th:text="${t.firstName} + ' ' + ${t.lastName}">Name</strong></p>
+        <p>Shift: <span th:text="${t.shift}">FIRST</span></p>
+        <p>Students count:
+            <span th:text="${studentsCountMap[t.userId] != null ? studentsCountMap[t.userId] : 0}">0</span>
+        </p>
+        <p>
+            <a th:href="@{|/manager/teacher_slots/${t.userId}|}">Open Slot Page</a>
+        </p>
+    </div>
+</div>
+</body>
+</html>

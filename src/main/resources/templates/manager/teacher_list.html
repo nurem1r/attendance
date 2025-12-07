@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"/></head>
+<body>
+<h2>Teacher List</h2>
+<table border="1" cellpadding="4">
+    <thead>
+    <tr>
+        <th>Full Name</th>
+        <th>Teacher ID</th>
+        <th>Number of students</th>
+        <th>Last attendance date</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="t : ${teachers}">
+        <td th:text="${t.firstName + ' ' + t.lastName}">Name</td>
+        <td th:text="${t.userId}">ID</td>
+        <td th:text="${studentsCountMap != null && studentsCountMap[t.userId] != null ? studentsCountMap[t.userId] : 0}">0</td>
+        <td>--</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>
