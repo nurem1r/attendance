@@ -1,27 +1,584 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"/></head>
-<body>
-<h2 th:text="${teacher.firstName + ' ' + teacher.lastName + ' - Slots'}">Slots</h2>
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        /* СТИЛИ ДЛЯ СТРАНИЦЫ СЛОТОВ УЧИТЕЛЯ */
 
-<div style="display:flex;flex-wrap:wrap;">
-    <div th:each="slot : ${slots}" style="border:1px solid #ccc;padding:8px;margin:5px;width:30%;">
-        <h4 th:text="${slot.label}">08:00-09:00</h4>
-        <p>Students in slot:</p>
-        <ul>
-            <li th:each="s : ${studentsBySlot != null and studentsBySlot[slot.id] != null ? studentsBySlot[slot.id] : T(java.util.Collections).emptyList()}"
-                th:text="${s.firstName + ' ' + s.lastName}">Student</li>
-            <li th:if="${studentsBySlot == null or studentsBySlot[slot.id] == null or #lists.isEmpty(studentsBySlot[slot.id])}">No students</li>
-        </ul>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1e293b;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Заголовок */
+        h2 {
+            color: #0369a1;
+            font-size: 2.2rem;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #0ea5e9;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h2::before {
+            content: '👨‍🏫';
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+
+        /* Информация об учителе */
+        .teacher-info {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            border: 2px solid #e0f2fe;
+        }
+
+        .teacher-details {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .teacher-avatar {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #0ea5e9, #0369a1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .teacher-text h3 {
+            font-size: 1.8rem;
+            color: #0c4a6e;
+            margin-bottom: 5px;
+        }
+
+        .teacher-text p {
+            color: #64748b;
+            font-size: 1rem;
+        }
+
+        .teacher-stats {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #0ea5e9;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Контейнер слотов */
+        .slots-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        /* Карточка слота */
+        .slot-card {
+            background: white;
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slot-card:hover {
+            transform: translateY(-8px);
+            border-color: #0ea5e9;
+            box-shadow: 0 15px 30px rgba(14, 165, 233, 0.15);
+        }
+
+        .slot-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+        }
+
+        .slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .slot-time {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0c4a6e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slot-time::before {
+            content: '🕐';
+            font-size: 1.3rem;
+        }
+
+        .slot-id {
+            background: #f0f9ff;
+            color: #0369a1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Секция студентов */
+        .students-section {
+            margin-bottom: 25px;
+        }
+
+        .students-title {
+            font-size: 1.1rem;
+            color: #475569;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .students-title::before {
+            content: '👨‍🎓';
+        }
+
+        .students-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .student-item {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .student-item:hover {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+            transform: translateX(5px);
+        }
+
+        .student-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .student-status {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-weight: 500;
+        }
+
+        .status-present {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-absent {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .no-students {
+            text-align: center;
+            color: #94a3b8;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 10px;
+            font-style: italic;
+        }
+
+        .no-students::before {
+            content: '📭';
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        /* Форма перемещения */
+        .move-form {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #bae6fd;
+        }
+
+        .move-title {
+            font-size: 1rem;
+            color: #0369a1;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .move-title::before {
+            content: '🔄';
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 0.9rem;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .form-select {
+            padding: 12px 16px;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 1rem;
+            background-color: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%230369a1' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+        }
+
+        /* Иконка занятости */
+        .slot-occupancy {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: #0ea5e9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 8px rgba(14, 165, 233, 0.3);
+        }
+
+        /* Цвета в зависимости от заполненности */
+        .slot-card.low-occupancy::before {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .slot-card.medium-occupancy::before {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        }
+
+        .slot-card.high-occupancy::before {
+            background: linear-gradient(90deg, #ef4444, #f87171);
+        }
+
+        .slot-occupancy.low { background: #10b981; }
+        .slot-occupancy.medium { background: #f59e0b; }
+        .slot-occupancy.high { background: #ef4444; }
+
+        /* Фильтры и управление */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #0ea5e9;
+            color: white;
+            border-color: #0ea5e9;
+        }
+
+        .filter-btn:hover:not(.active) {
+            border-color: #0ea5e9;
+            background: #f0f9ff;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+            .slots-container {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 15px;
+            }
+
+            .teacher-info {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .teacher-details {
+                flex-direction: column;
+            }
+
+            .teacher-stats {
+                justify-content: center;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                justify-content: center;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            .slot-card {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .slots-container {
+                grid-template-columns: 1fr;
+            }
+
+            .teacher-avatar {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+
+            .stat {
+                min-width: 100px;
+            }
+        }
+
+        /* Анимация загрузки карточек */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slot-card {
+            animation: slideUp 0.5s ease forwards;
+            animation-delay: calc(var(--i) * 0.1s);
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 th:text="${teacher.firstName + ' ' + teacher.lastName + ' - Time Slots'}">Slots</h2>
+
+    <!-- Информация об учителе -->
+    <div class="teacher-info">
+        <div class="teacher-details">
+            <div class="teacher-avatar">
+                👨‍🏫
+            </div>
+            <div class="teacher-text">
+                <h3 th:text="${teacher.firstName + ' ' + teacher.lastName}">Teacher Name</h3>
+                <p>Time Slots Management</p>
+            </div>
+        </div>
+        <div class="teacher-stats">
+            <div class="stat">
+                <div class="stat-number" th:text="${slots != null ? #lists.size(slots) : 0}">0</div>
+                <div class="stat-label">Total Slots</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">
+                        <span th:text="${studentsBySlot != null ?
+                            #maps.aggregate(studentsBySlot, #{0}, (total, entry) -> total + #lists.size(entry.value)) : 0}">
+                            0
+                        </span>
+                </div>
+                <div class="stat-label">Total Students</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">
+                        <span th:text="${studentsBySlot != null ?
+                            #maps.aggregate(studentsBySlot, #{0}, (total, entry) -> #lists.size(entry.value) > 0 ? total + 1 : total) : 0}">
+                            0
+                        </span>
+                </div>
+                <div class="stat-label">Occupied Slots</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Контролы фильтрации -->
+    <div class="controls">
+        <div class="filter-group">
+            <button class="filter-btn active">All Slots</button>
+            <button class="filter-btn">Available</button>
+            <button class="filter-btn">Occupied</button>
+        </div>
         <div>
-            <label>Move student:
-                <select>
-                    <option>--</option>
-                </select>
-            </label>
+                <span style="color: #64748b; font-weight: 500;">
+                    Showing <strong th:text="${slots != null ? #lists.size(slots) : 0}">0</strong> time slots
+                </span>
+        </div>
+    </div>
+
+    <!-- Слоты -->
+    <div class="slots-container">
+        <div th:each="slot, stat : ${slots}"
+             class="slot-card"
+             th:classappend="${studentsBySlot != null and studentsBySlot[slot.id] != null and #lists.size(studentsBySlot[slot.id]) >= 3} ? 'high-occupancy' :
+                               ${studentsBySlot != null and studentsBySlot[slot.id] != null and #lists.size(studentsBySlot[slot.id]) == 2} ? 'medium-occupancy' :
+                               ${studentsBySlot != null and studentsBySlot[slot.id] != null and #lists.size(studentsBySlot[slot.id]) == 1} ? 'low-occupancy' : ''"
+             th:style="'--i: ' + ${stat.index}">
+
+            <!-- Иконка занятости -->
+            <div th:if="${studentsBySlot != null and studentsBySlot[slot.id] != null}"
+                 class="slot-occupancy"
+                 th:classappend="${#lists.size(studentsBySlot[slot.id]) >= 3} ? 'high' :
+                                     ${#lists.size(studentsBySlot[slot.id]) == 2} ? 'medium' : 'low'"
+                 th:text="${#lists.size(studentsBySlot[slot.id])}">
+            </div>
+
+            <div class="slot-header">
+                <div class="slot-time" th:text="${slot.label}">08:00-09:00</div>
+                <div class="slot-id">ID: <span th:text="${slot.id}">0</span></div>
+            </div>
+
+            <div class="students-section">
+                <h4 class="students-title">
+                    Students in this slot
+                    <span th:if="${studentsBySlot != null and studentsBySlot[slot.id] != null}"
+                          style="background: #e0f2fe; padding: 3px 10px; border-radius: 15px; font-size: 0.9rem;"
+                          th:text="'(' + ${#lists.size(studentsBySlot[slot.id])} + ')'"></span>
+                </h4>
+
+                <ul class="students-list">
+                    <li th:each="s : ${studentsBySlot != null and studentsBySlot[slot.id] != null ? studentsBySlot[slot.id] : T(java.util.Collections).emptyList()}"
+                        class="student-item">
+                        <span class="student-name" th:text="${s.firstName + ' ' + s.lastName}">Student Name</span>
+                        <span class="student-status status-present">Present</span>
+                    </li>
+                    <li th:if="${studentsBySlot == null or studentsBySlot[slot.id] == null or #lists.isEmpty(studentsBySlot[slot.id])}"
+                        class="no-students">
+                        No students assigned
+                    </li>
+                </ul>
+            </div>
+
+            <div class="move-form">
+                <h5 class="move-title">Move Student</h5>
+                <div class="form-group">
+                    <label class="form-label">Select student to move:</label>
+                    <select class="form-select">
+                        <option>-- Select student --</option>
+                        <option th:if="${studentsBySlot != null and studentsBySlot[slot.id] != null}"
+                                th:each="s : ${studentsBySlot[slot.id]}"
+                                th:value="${s.id}"
+                                th:text="${s.firstName + ' ' + s.lastName}">
+                        </option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-
 </body>
 </html>

@@ -1,82 +1,211 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"/></head>
-<body>
-<h2>Add Student</h2>
-<form th:action="@{/manager/add_student}" method="post">
-  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-  <div><label>First name: <input type="text" name="firstName" required/></label></div>
-  <div><label>Last name: <input type="text" name="lastName" required/></label></div>
-  <div><label>Phone: <input type="text" name="phone"/></label></div>
-  <div>
-    <label>Package:
-      <select name="packageType" required>
-        <option th:each="p : ${packageTypes}" th:value="${p}" th:text="${p}"></option>
-      </select>
-    </label>
-  </div>
-  <div>
-    <label>Teacher:
-      <select id="teacherSelect" name="teacherId" required>
-        <option value="">-- select teacher --</option>
-        <option th:each="t : ${teachers}" th:value="${t.userId}" th:text="${t.firstName + ' ' + t.lastName}"></option>
-      </select>
-    </label>
-  </div>
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    /* ВРЕМЕННЫЙ CSS ПРЯМО В HTML */
 
-  <div>
-    <label>Time (optional):
-      <!-- вместо ввода id — селект с метками; value = timeSlot.id -->
-      <select id="timeSlotSelect" name="timeSlotId">
-        <option value="">-- no specific time --</option>
-        <!-- options будут подгружены через JS при выборе учителя -->
-      </select>
-    </label>
-  </div>
+    /* Сброс и базовые стили */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  <div>
-    <label>Book: <input type="checkbox" name="book" value="true"/></label>
-  </div>
-  <div>
-    <label>Debt: <input type="number" step="0.01" name="debt" value="0"/></label>
-  </div>
-  <div><button type="submit">Create Student</button></div>
-</form>
+    /* Фон всей страницы */
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #333;
+    }
 
-<script>
-  // Когда manager выбирает учителя — подгружаем его тимслоты и показываем удобные метки.
-  document.addEventListener('DOMContentLoaded', function () {
-    const teacherSelect = document.getElementById('teacherSelect');
-    const timeSlotSelect = document.getElementById('timeSlotSelect');
+    /* Контейнер формы */
+    body > div {
+      max-width: 700px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    }
 
-    async function loadSlotsForTeacher(teacherId) {
-      // очистим селект
-      timeSlotSelect.innerHTML = '<option value="">-- no specific time --</option>';
-      if (!teacherId) return;
-      try {
-        const res = await fetch('/manager/teacher_slots_json/' + teacherId);
-        if (!res.ok) return;
-        const slots = await res.json();
-        slots.forEach(s => {
-          const opt = document.createElement('option');
-          opt.value = s.id;
-          opt.textContent = s.label;
-          timeSlotSelect.appendChild(opt);
-        });
-      } catch (err) {
-        console.error('Failed to load timeslots', err);
+    /* Заголовок */
+    h2 {
+      color: #4a5568;
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 35px;
+      padding-bottom: 15px;
+      border-bottom: 3px solid #667eea;
+    }
+
+    /* Форма */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* Каждая строка формы */
+    form > div {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Метки */
+    label {
+      font-weight: 600;
+      color: #4a5568;
+      font-size: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Все поля ввода */
+    input[type="text"],
+    input[type="number"],
+    select {
+      padding: 14px 18px;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 16px;
+      background-color: #f8fafc;
+      transition: all 0.3s ease;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    /* Фокус на полях */
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+      background-color: white;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+    }
+
+    /* Стили для select */
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234a5568' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 18px center;
+      background-size: 16px;
+      padding-right: 45px;
+      cursor: pointer;
+    }
+
+    /* Чекбокс */
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin-right: 10px;
+      accent-color: #667eea;
+      cursor: pointer;
+    }
+
+    /* Кнопка отправки */
+    button[type="submit"] {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 18px 35px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    button[type="submit"]:hover {
+      background: linear-gradient(135deg, #5a67d8, #6b46c1);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    button[type="submit"]:active {
+      transform: translateY(0);
+    }
+
+    /* Обязательные поля */
+    form > div > label:has(input[required])::before {
+      content: "*";
+      color: #e53e3e;
+      margin-right: 4px;
+    }
+
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 15px;
+      }
+
+      body > div {
+        padding: 25px;
+      }
+
+      h2 {
+        font-size: 26px;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      select,
+      button[type="submit"] {
+        max-width: 100%;
+        padding: 12px 16px;
       }
     }
 
-    // при загрузке страницы — если выбран учитель по умолчанию, загрузим его слоты
-    if (teacherSelect.value) {
-      loadSlotsForTeacher(teacherSelect.value);
-    }
-
-    teacherSelect.addEventListener('change', function () {
-      loadSlotsForTeacher(this.value);
-    });
-  });
-</script>
+    /* DEBUG: Если хотите убедиться, что CSS работает */
+    /* Уберите комментарий ниже, если нужна проверка */
+    /*
+    body { border: 5px solid red !important; }
+    h2 { background: yellow !important; }
+    */
+  </style>
+</head>
+<body>
+<div>
+  <h2>Add Student</h2>
+  <form th:action="@{/manager/add_student}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+    <div><label>First name: <input type="text" name="firstName" required/></label></div>
+    <div><label>Last name: <input type="text" name="lastName" required/></label></div>
+    <div><label>Phone: <input type="text" name="phone"/></label></div>
+    <div>
+      <label>Package:
+        <select name="packageType" required>
+          <option th:each="p : ${packageTypes}" th:value="${p}" th:text="${p}"></option>
+        </select>
+      </label>
+    </div>
+    <div>
+      <label>Teacher:
+        <select name="teacherId" required>
+          <option th:each="t : ${teachers}" th:value="${t.userId}" th:text="${t.firstName + ' ' + t.lastName}"></option>
+        </select>
+      </label>
+    </div>
+    <div>
+      <label>TimeSlot Id (optional): <input type="number" name="timeSlotId"/></label>
+    </div>
+    <div>
+      <label>Book: <input type="checkbox" name="book" value="true"/></label>
+    </div>
+    <div>
+      <label>Debt: <input type="number" step="0.01" name="debt" value="0"/></label>
+    </div>
+    <div><button type="submit">Create Student</button></div>
+  </form>
+</div>
 </body>
 </html>

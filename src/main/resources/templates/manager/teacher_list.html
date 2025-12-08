@@ -1,25 +1,419 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"/></head>
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        /* СТИЛИ ДЛЯ СПИСКА УЧИТЕЛЕЙ */
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #fdf4ff 0%, #faf5ff 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1e293b;
+            padding: 40px 30px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Заголовок */
+        h2 {
+            color: #7c3aed;
+            font-size: 2.5rem;
+            margin-bottom: 35px;
+            text-align: center;
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 4px;
+            background: linear-gradient(90deg, #7c3aed, #a78bfa);
+            border-radius: 2px;
+        }
+
+        /* Контейнер таблицы */
+        .table-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(124, 58, 237, 0.08);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .table-container::before {
+            content: '👨‍🏫';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            font-size: 10rem;
+            opacity: 0.05;
+            transform: rotate(15deg);
+            pointer-events: none;
+        }
+
+        /* Таблица */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            overflow: hidden;
+        }
+
+        th {
+            padding: 22px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+            position: relative;
+        }
+
+        th:first-child {
+            border-radius: 12px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 12px 0 0;
+        }
+
+        th::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 25%;
+            height: 50%;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        th:last-child::after {
+            display: none;
+        }
+
+        tbody tr {
+            background: white;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        tbody tr:hover {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.05), rgba(124, 58, 237, 0.03));
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(124, 58, 237, 0.1);
+        }
+
+        td {
+            padding: 20px;
+            color: #475569;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        /* Стили для колонок */
+        .teacher-name {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .teacher-name::before {
+            content: '👨‍🏫';
+            font-size: 1.3rem;
+            opacity: 0.7;
+        }
+
+        .teacher-id {
+            font-family: 'Courier New', monospace;
+            background: #f5f3ff;
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-weight: 600;
+            color: #7c3aed;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .students-count {
+            font-weight: 800;
+            font-size: 1.8rem;
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .students-count::before {
+            content: '👨‍🎓';
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+
+        .last-attendance {
+            color: #94a3b8;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .last-attendance::before {
+            content: '📅';
+            font-size: 1.2rem;
+        }
+
+        /* Бейджи для количества студентов */
+        .count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-left: 10px;
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Градиенты для строк */
+        tbody tr:nth-child(odd) {
+            background: #fafaff;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f5f3ff;
+        }
+
+        /* Статистика сверху */
+        .stats-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.08);
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            border: 2px solid #f1f5f9;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: #8b5cf6;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #7c3aed;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        /* Пустой список */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state::before {
+            content: '👨‍🏫';
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 992px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .table-container {
+                padding: 20px;
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 700px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 25px 15px;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .stats-summary {
+                flex-direction: column;
+            }
+
+            th, td {
+                padding: 15px 12px;
+                font-size: 0.95rem;
+            }
+
+            .teacher-name::before,
+            .students-count::before,
+            .last-attendance::before {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .table-container {
+                padding: 15px;
+            }
+
+            th {
+                padding: 12px 10px;
+                font-size: 0.9rem;
+            }
+
+            td {
+                padding: 12px 10px;
+                font-size: 0.9rem;
+            }
+
+            .students-count {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Анимация загрузки строк */
+        @keyframes fadeInRow {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        tbody tr {
+            animation: fadeInRow 0.5s ease forwards;
+            animation-delay: calc(var(--i) * 0.1s);
+            opacity: 0;
+        }
+    </style>
+</head>
 <body>
-<h2>Teacher List</h2>
-<table border="1" cellpadding="4">
-    <thead>
-    <tr>
-        <th>Full Name</th>
-        <th>Teacher ID</th>
-        <th>Number of students</th>
-        <th>Last attendance date</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="t : ${teachers}">
-        <td th:text="${t.firstName + ' ' + t.lastName}">Name</td>
-        <td th:text="${t.userId}">ID</td>
-        <td th:text="${studentsCountMap != null && studentsCountMap[t.userId] != null ? studentsCountMap[t.userId] : 0}">0</td>
-        <td>--</td>
-    </tr>
-    </tbody>
-</table>
+<div class="container">
+    <h2>Teacher List</h2>
+
+    <!-- Статистика -->
+    <div class="stats-summary">
+        <div class="stat-card">
+            <div class="stat-number" th:text="${teachers != null ? #lists.size(teachers) : 0}">0</div>
+            <div class="stat-label">Total Teachers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">
+                    <span th:if="${studentsCountMap != null}"
+                          th:text="${#maps.aggregate(studentsCountMap, #{0}, (total, entry) -> total + entry.value)}">
+                        0
+                    </span>
+                <span th:unless="${studentsCountMap != null}">0</span>
+            </div>
+            <div class="stat-label">Total Students</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" th:text="${teachers ?. stream() ?. filter(t -> studentsCountMap != null && studentsCountMap[t.userId] != null && studentsCountMap[t.userId] > 0) ?. count() ?: 0}">0</div>
+            <div class="stat-label">Active Teachers</div>
+        </div>
+    </div>
+
+    <!-- Таблица -->
+    <div class="table-container">
+        <table>
+            <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Teacher ID</th>
+                <th>Number of Students</th>
+                <th>Last Attendance Date</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="t, stat : ${teachers}" th:style="'--i: ' + ${stat.index}">
+                <td>
+                    <span class="teacher-name" th:text="${t.firstName + ' ' + t.lastName}">Name</span>
+                </td>
+                <td>
+                    <span class="teacher-id" th:text="${t.userId}">ID</span>
+                </td>
+                <td>
+                        <span class="students-count">
+                            <span th:text="${studentsCountMap != null && studentsCountMap[t.userId] != null ? studentsCountMap[t.userId] : 0}">0</span>
+                            <span th:if="${studentsCountMap != null && studentsCountMap[t.userId] != null && studentsCountMap[t.userId] > 0}"
+                                  class="count-badge" th:text="${studentsCountMap[t.userId]}"></span>
+                        </span>
+                </td>
+                <td>
+                    <span class="last-attendance">--</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <!-- Пустой список -->
+        <div th:if="${teachers == null or #lists.isEmpty(teachers)}" class="empty-state">
+            No teachers found. Add your first teacher to get started.
+        </div>
+    </div>
+</div>
 </body>
 </html>

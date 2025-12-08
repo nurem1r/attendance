@@ -3,27 +3,470 @@
 <head>
     <meta charset="UTF-8"/>
     <title>Manager Dashboard</title>
+    <style>
+        /* СТИЛИ ДЛЯ ДАШБОРДА МЕНЕДЖЕРА */
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1e293b;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Заголовок */
+        h2 {
+            color: #0c4a6e;
+            font-size: 2.4rem;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #0ea5e9;
+        }
+
+        /* Панель навигации */
+        .nav-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 35px;
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            border: 2px solid #e0f2fe;
+        }
+
+        .nav-link {
+            background: linear-gradient(135deg, #0ea5e9, #0369a1);
+            color: white;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(135deg, #0284c7, #075985);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);
+        }
+
+        /* Иконки для ссылок */
+        .nav-link[href*="add_student"]::before {
+            content: "👨‍🎓";
+            font-size: 1.2rem;
+        }
+
+        .nav-link[href*="add_teacher"]::before {
+            content: "👨‍🏫";
+            font-size: 1.2rem;
+        }
+
+        .nav-link[href*="student_list"]::before {
+            content: "📋";
+            font-size: 1.2rem;
+        }
+
+        .nav-link[href*="teacher_list"]::before {
+            content: "👥";
+            font-size: 1.2rem;
+        }
+
+        .separator {
+            color: #cbd5e1;
+            font-weight: 300;
+        }
+
+        /* Секция учителей */
+        .teachers-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            margin-top: 20px;
+        }
+
+        h3 {
+            color: #334155;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h3::before {
+            content: "👨‍🏫";
+            font-size: 1.5rem;
+        }
+
+        /* Сетка учителей */
+        .teachers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        /* Карточка учителя */
+        .teacher-card {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 25px;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .teacher-card:hover {
+            transform: translateY(-5px);
+            border-color: #0ea5e9;
+            box-shadow: 0 15px 30px rgba(14, 165, 233, 0.15);
+        }
+
+        .teacher-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+        }
+
+        .teacher-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .teacher-name::before {
+            content: "👤";
+            font-size: 1.3rem;
+        }
+
+        .teacher-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 500;
+            min-width: 100px;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .shift-badge {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .students-count {
+            background: #f0f9ff;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-weight: 700;
+            color: #1e40af;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1rem;
+        }
+
+        .students-count::before {
+            content: "👨‍🎓";
+        }
+
+        .action-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-top: 15px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-link:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .action-link::after {
+            content: "→";
+            position: absolute;
+            right: 20px;
+            transition: transform 0.3s;
+        }
+
+        .action-link:hover::after {
+            transform: translateX(5px);
+        }
+
+        /* Быстрая статистика */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+            text-align: center;
+            border: 2px solid #f1f5f9;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: #0ea5e9;
+            box-shadow: 0 12px 25px rgba(14, 165, 233, 0.15);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #0ea5e9;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        /* Пустое состояние */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+            background: #f8fafc;
+            border-radius: 16px;
+            border: 2px dashed #cbd5e1;
+        }
+
+        .empty-state-icon {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            display: block;
+            opacity: 0.5;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 992px) {
+            .teachers-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+
+            .quick-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 15px;
+            }
+
+            .nav-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .nav-link {
+                justify-content: center;
+                text-align: center;
+            }
+
+            .separator {
+                display: none;
+            }
+
+            .quick-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .teachers-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            h3 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Анимации */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .teacher-card {
+            animation: fadeInUp 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        /* Последовательная анимация для карточек */
+        .teachers-grid > *:nth-child(1) { animation-delay: 0.1s; }
+        .teachers-grid > *:nth-child(2) { animation-delay: 0.2s; }
+        .teachers-grid > *:nth-child(3) { animation-delay: 0.3s; }
+        .teachers-grid > *:nth-child(4) { animation-delay: 0.4s; }
+        .teachers-grid > *:nth-child(5) { animation-delay: 0.5s; }
+        .teachers-grid > *:nth-child(6) { animation-delay: 0.6s; }
+
+        /* Цветовые темы для смен */
+        .shift-FIRST {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .shift-SECOND {
+            background: #f0f9ff;
+            color: #0369a1;
+        }
+    </style>
 </head>
 <body>
-<h2>Manager Dashboard</h2>
-<div>
-    <a th:href="@{/manager/add_student}">Add Student</a> |
-    <a th:href="@{/manager/add_teacher}">Add Teacher</a> |
-    <a th:href="@{/manager/student_list}">Student List</a> |
-    <a th:href="@{/manager/teacher_list}">Teacher List</a>
-</div>
+<div class="container">
+    <h2>Manager Dashboard</h2>
 
-<div style="margin-top:20px;">
-    <h3>Teachers</h3>
-    <div th:each="t : ${teachers}" style="border:1px solid #ccc;padding:10px;margin:5px;">
-        <p><strong th:text="${t.firstName} + ' ' + ${t.lastName}">Name</strong></p>
-        <p>Shift: <span th:text="${t.shift}">FIRST</span></p>
-        <p>Students count:
-            <span th:text="${studentsCountMap[t.userId] != null ? studentsCountMap[t.userId] : 0}">0</span>
-        </p>
-        <p>
-            <a th:href="@{|/manager/teacher_slots/${t.userId}|}">Open Slot Page</a>
-        </p>
+    <!-- Быстрая статистика -->
+    <div class="quick-stats">
+        <div class="stat-card">
+            <span class="stat-icon">👨‍🏫</span>
+            <div class="stat-number" th:text="${teachers != null ? #lists.size(teachers) : 0}">0</div>
+            <div class="stat-label">Total Teachers</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">👨‍🎓</span>
+            <div class="stat-number" th:text="${totalStudents}">0</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-icon">📊</span>
+            <div class="stat-number" th:text="${activeTeachers}">0</div>
+            <div class="stat-label">Active Teachers</div>
+        </div>
+    </div>
+
+    <!-- Панель навигации -->
+    <div class="nav-panel">
+        <a class="nav-link" th:href="@{/manager/add_student}">Add Student</a>
+        <span class="separator">|</span>
+        <a class="nav-link" th:href="@{/manager/add_teacher}">Add Teacher</a>
+        <span class="separator">|</span>
+        <a class="nav-link" th:href="@{/manager/student_list}">Student List</a>
+        <span class="separator">|</span>
+        <a class="nav-link" th:href="@{/manager/teacher_list}">Teacher List</a>
+    </div>
+
+    <!-- Секция учителей -->
+    <div class="teachers-section">
+        <h3>Teachers</h3>
+
+        <div class="teachers-grid">
+            <div th:each="t : ${teachers}" class="teacher-card">
+                <div class="teacher-name" th:text="${t.firstName + ' ' + t.lastName}">Name</div>
+
+                <div class="teacher-info">
+                    <div class="info-row">
+                        <span class="info-label">Shift:</span>
+                        <span class="info-value shift-badge" th:text="${t.shift}">FIRST</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">Students:</span>
+                        <span class="students-count">
+                            <span th:text="${studentsCountMap != null && studentsCountMap.containsKey(t.userId) ? studentsCountMap.get(t.userId) : 0}">0</span>
+                        </span>
+                    </div>
+                </div>
+
+                <a class="action-link" th:href="@{/manager/teacher_slots/{id}(id=${t.userId})}">
+                    Open Slot Page
+                </a>
+            </div>
+        </div>
+
+        <!-- Пустое состояние -->
+        <div th:if="${#lists.isEmpty(teachers)}" class="empty-state">
+            <span class="empty-state-icon">👨‍🏫</span>
+            <h3>No Teachers Found</h3>
+            <p>Add your first teacher to get started with the system.</p>
+            <a class="nav-link" th:href="@{/manager/add_teacher}" style="margin-top: 20px; width: auto; display: inline-block;">
+                Add First Teacher
+            </a>
+        </div>
     </div>
 </div>
 </body>
