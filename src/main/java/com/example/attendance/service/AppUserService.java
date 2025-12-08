@@ -5,6 +5,7 @@ import com.example.attendance.enums.UserRole;
 import com.example.attendance.repositories.AppUserRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -46,15 +47,27 @@ public class AppUserService implements UserDetailsService {
         return userRepo.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException("Not found"));
     }
 
+    /**
+     * Create a teacher AppUser. Throws IllegalArgumentException if username already exists.
+     * Uses saveAndFlush to ensure id is generated immediately (needed for shared-pk Teacher creation).
+     */
     @Transactional
     public AppUser createTeacherUser(String username, String rawPassword) {
+        if (userRepo.findByUsername(username).isPresent()) {
+            throw new IllegalArgumentException("Username already exists: " + username);
+        }
         AppUser u = AppUser.builder()
                 .username(username)
                 .password(passwordEncoder.encode(rawPassword))
                 .role(UserRole.TEACHER)
                 .build();
-        AppUser saved = userRepo.saveAndFlush(u);
-        return saved;
+        try {
+            AppUser saved = userRepo.saveAndFlush(u);
+            return saved;
+        } catch (DataIntegrityViolationException ex) {
+            // defensive: if unique constraint lost race, translate to IllegalArgumentException
+            throw new IllegalArgumentException("Username already exists: " + username, ex);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +88,17 @@ public class AppUserService implements UserDetailsService {
         return userRepo.saveAndFlush(u);
     }
 
+    @Transactional(readOnly = true)
     public AppUser findById(Long id) {
         return userRepo.findById(id).orElse(null);
+    }
+
+    /**
+     * Delete AppUser by id. Used for cleanup when Teacher creation fails.
+     */
+    @Transactional
+    public void deleteById(Long id) {
+        if (id == null) return;
+        userRepo.deleteById(id);
     }
 }

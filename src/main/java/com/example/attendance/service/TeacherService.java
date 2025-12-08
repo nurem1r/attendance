@@ -7,6 +7,8 @@ import com.example.attendance.enums.Shift;
 import com.example.attendance.repositories.TeacherRepository;
 import com.example.attendance.repositories.TimeSlotRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +20,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TeacherService {
 
+    private final Logger log = LoggerFactory.getLogger(TeacherService.class);
+
     private final TeacherRepository teacherRepository;
     private final TimeSlotRepository timeSlotRepository;
 
+    /**
+     * Создаёт запись Teacher, привязанную к уже существующему AppUser.
+     * Явно проставляем userId (shared PK) перед сохранением и предотвращаем дублирование таймслотов.
+     */
     @Transactional
     public Teacher createTeacherForUser(AppUser user, String firstName, String lastName, String phone, Shift shift) {
         Teacher t = Teacher.builder()
@@ -30,9 +38,27 @@ public class TeacherService {
                 .shift(shift)
                 .user(user)
                 .build();
+
+        // Ensure shared PK set explicitly
+        if (user != null && user.getId() != null) {
+            t.setUserId(user.getId());
+        } else {
+            log.warn("createTeacherForUser: AppUser or AppUser.id is null (username={})", user == null ? "null" : user.getUsername());
+        }
+
         Teacher saved = teacherRepository.save(t);
 
-        createDefaultTimeSlotsForTeacher(saved.getUserId(), shift);
+        // Prevent duplicate default timeslots: only create if none exist for this teacher
+        if (saved.getUserId() != null) {
+            List<TimeSlot> existing = timeSlotRepository.findByTeacherIdOrderByStartTime(saved.getUserId());
+            if (existing == null || existing.isEmpty()) {
+                createDefaultTimeSlotsForTeacher(saved.getUserId(), shift);
+            } else {
+                log.info("Default timeslots already exist for teacherId={}, skipping creation", saved.getUserId());
+            }
+        } else {
+            log.warn("Saved teacher has null userId; skipping timeslot creation");
+        }
 
         return saved;
     }
@@ -65,6 +91,7 @@ public class TeacherService {
             }
         }
         timeSlotRepository.saveAll(slots);
+        log.info("Created {} default timeslots for teacherId={}", slots.size(), teacherId);
     }
 
     public Teacher findById(Long id) {

@@ -11,9 +11,13 @@ import com.example.attendance.service.StudentService;
 import com.example.attendance.service.TeacherService;
 import com.example.attendance.service.TimeSlotService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -23,6 +27,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/manager")
 @RequiredArgsConstructor
 public class ManagerController {
+
+    private final Logger log = LoggerFactory.getLogger(ManagerController.class);
 
     private final TeacherService teacherService;
     private final AppUserService appUserService;
@@ -48,6 +54,10 @@ public class ManagerController {
         return "manager/add_teacher";
     }
 
+    /**
+     * Create teacher: check username first, create AppUser, then Teacher.
+     * If Teacher creation fails after AppUser created — rollback AppUser to avoid orphans.
+     */
     @PostMapping("/add_teacher")
     public String addTeacher(@RequestParam String firstName,
                              @RequestParam String lastName,
@@ -55,9 +65,49 @@ public class ManagerController {
                              @RequestParam com.example.attendance.enums.Shift shift,
                              @RequestParam String username,
                              @RequestParam String password) {
-        AppUser user = appUserService.createTeacherUser(username, password);
-        teacherService.createTeacherForUser(user, firstName, lastName, phone, shift);
-        return "redirect:/manager";
+        // check username existence
+        if (appUserService.findByUsernameSafe(username) != null) {
+            log.warn("Attempt to create teacher with existing username={}", username);
+            return "redirect:/manager?error=username_exists";
+        }
+
+        AppUser user = null;
+        try {
+            user = appUserService.createTeacherUser(username, password);
+        } catch (IllegalArgumentException | DataIntegrityViolationException ex) {
+            log.warn("Failed to create AppUser for username={}, reason={}", username, ex.getMessage());
+            return "redirect:/manager?error=user_create";
+        } catch (Exception ex) {
+            log.error("Unexpected error creating AppUser for username={}", username, ex);
+            return "redirect:/manager?error=user_create";
+        }
+
+        // create Teacher profile
+        try {
+            Teacher teacher = teacherService.createTeacherForUser(user, firstName, lastName, phone, shift);
+            if (teacher == null || teacher.getUserId() == null) {
+                log.error("Teacher profile creation failed for username={}, userId={}", username, user.getId());
+                // cleanup user to avoid orphaned AppUser without Teacher (optional)
+                try {
+                    appUserService.deleteById(user.getId());
+                } catch (Exception e) {
+                    log.error("Failed to cleanup AppUser id={} after teacher creation failure", user.getId(), e);
+                }
+                return "redirect:/manager?error=teacher_create";
+            }
+        } catch (Exception ex) {
+            log.error("Failed to create Teacher for userId={}, rolling back user. Reason: {}", user.getId(), ex.getMessage());
+            // cleanup created AppUser
+            try {
+                appUserService.deleteById(user.getId());
+            } catch (Exception e) {
+                log.error("Failed to cleanup AppUser id={} after exception", user.getId(), e);
+            }
+            return "redirect:/manager?error=teacher_create";
+        }
+
+        log.info("Created teacher username={} userId={}", username, user.getId());
+        return "redirect:/manager?success=teacher_created";
     }
 
     @GetMapping("/add_student")
@@ -132,5 +182,25 @@ public class ManagerController {
         model.addAttribute("slots", slots);
         model.addAttribute("studentsBySlot", studentsBySlot);
         return "manager/teacher_slots";
+    }
+
+    /**
+     * Возвращает JSON список TimeSlot (id + label) для указанного teacherId.
+     * Используется клиентским JS в форме добавления студента.
+     */
+    @GetMapping("/teacher_slots_json/{teacherId}")
+    @ResponseBody
+    public List<Map<String, Object>> teacherSlotsJson(@PathVariable Long teacherId) {
+        List<TimeSlot> slots = timeSlotService.findByTeacherId(teacherId);
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (slots != null) {
+            for (TimeSlot slot : slots) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", slot.getId());
+                m.put("label", slot.getLabel());
+                out.add(m);
+            }
+        }
+        return out;
     }
 }

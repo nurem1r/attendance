@@ -17,14 +17,23 @@
   </div>
   <div>
     <label>Teacher:
-      <select name="teacherId" required>
+      <select id="teacherSelect" name="teacherId" required>
+        <option value="">-- select teacher --</option>
         <option th:each="t : ${teachers}" th:value="${t.userId}" th:text="${t.firstName + ' ' + t.lastName}"></option>
       </select>
     </label>
   </div>
+
   <div>
-    <label>TimeSlot Id (optional): <input type="number" name="timeSlotId"/></label>
+    <label>Time (optional):
+      <!-- вместо ввода id — селект с метками; value = timeSlot.id -->
+      <select id="timeSlotSelect" name="timeSlotId">
+        <option value="">-- no specific time --</option>
+        <!-- options будут подгружены через JS при выборе учителя -->
+      </select>
+    </label>
   </div>
+
   <div>
     <label>Book: <input type="checkbox" name="book" value="true"/></label>
   </div>
@@ -33,5 +42,41 @@
   </div>
   <div><button type="submit">Create Student</button></div>
 </form>
+
+<script>
+  // Когда manager выбирает учителя — подгружаем его тимслоты и показываем удобные метки.
+  document.addEventListener('DOMContentLoaded', function () {
+    const teacherSelect = document.getElementById('teacherSelect');
+    const timeSlotSelect = document.getElementById('timeSlotSelect');
+
+    async function loadSlotsForTeacher(teacherId) {
+      // очистим селект
+      timeSlotSelect.innerHTML = '<option value="">-- no specific time --</option>';
+      if (!teacherId) return;
+      try {
+        const res = await fetch('/manager/teacher_slots_json/' + teacherId);
+        if (!res.ok) return;
+        const slots = await res.json();
+        slots.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.label;
+          timeSlotSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Failed to load timeslots', err);
+      }
+    }
+
+    // при загрузке страницы — если выбран учитель по умолчанию, загрузим его слоты
+    if (teacherSelect.value) {
+      loadSlotsForTeacher(teacherSelect.value);
+    }
+
+    teacherSelect.addEventListener('change', function () {
+      loadSlotsForTeacher(this.value);
+    });
+  });
+</script>
 </body>
 </html>
