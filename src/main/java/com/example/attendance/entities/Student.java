@@ -48,6 +48,9 @@ public class Student implements Serializable {
     @Column(name = "teacher_id")
     private Long teacherId;
 
+    @Column(name = "time_slot_id")
+    private Long timeSlotId;
+
     // link to lesson package entity (nullable)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "package_id")

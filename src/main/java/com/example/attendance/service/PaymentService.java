@@ -28,10 +28,7 @@ public class PaymentService {
             throw new IllegalArgumentException("Amount must be positive");
         }
 
-        Student student = studentService.findById(studentId);
-        if (student == null) {
-            throw new IllegalArgumentException("Student not found: " + studentId);
-        }
+        Student student = studentService.findById(studentId).orElseThrow(() -> new IllegalArgumentException("Student not found: " + studentId));
 
         // Normalize student's debt
         if (student.getDebt() == null) {
@@ -43,6 +40,7 @@ public class PaymentService {
             newDebt = BigDecimal.ZERO; // don't go negative
         }
         student.setDebt(newDebt);
+        student.setUpdatedAt(java.time.Instant.now());
         studentService.updateStudent(student);
 
         Payment payment = Payment.builder()

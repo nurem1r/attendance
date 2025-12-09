@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Ошибка</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="container">
+    <div class="error-wrap">
+        <h2>Что‑то пошло не так</h2>
+        <p>Произошла ошибка на сервере. Пожалуйста, попробуйте обновить страницу или обратитесь к администратору.</p>
+        <div style="margin-top:12px">
+            <a th:href="@{/}" class="btn-consume">На главную</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

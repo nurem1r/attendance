@@ -8,6 +8,7 @@ import com.example.attendance.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,7 @@ import java.util.Optional;
 
 /**
  * StudentService — единая реализация (без отдельного интерфейса),
- * реализует функции, используемые в ManagerController.
+ * реализует функции, используемые в ManagerController and controllers.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,8 +31,8 @@ public class StudentService {
     private final LessonPackageRepository lessonPackageRepository;
 
     /**
-     * Create student with low-level params coming from manager form.
-     * This signature matches usage in ManagerController.addStudent(...)
+     * Legacy createStudent using enum packageType (kept for backward compatibility).
+     * Existing implementation remains.
      */
     @Transactional
     public Student createStudent(String firstName,
@@ -99,6 +100,72 @@ public class StudentService {
     }
 
     /**
+     * New: create student and assign LessonPackage by packageId (preferred path).
+     *
+     * initialPayment — amount paid at registration (may be null or zero). Debt = package.price - initialPayment.
+     */
+    @Transactional
+    public Student createStudentWithPackage(String firstName,
+                                            String lastName,
+                                            String phone,
+                                            Long packageId,
+                                            Long teacherId,
+                                            Long timeSlotId,
+                                            Boolean book,
+                                            BigDecimal initialPayment) {
+        if (firstName == null || lastName == null) {
+            throw new IllegalArgumentException("firstName/lastName required");
+        }
+
+        LessonPackage pkg = lessonPackageRepository.findById(packageId)
+                .orElseThrow(() -> new IllegalArgumentException("Package not found: " + packageId));
+
+        Student s = Student.builder()
+                .firstName(firstName.trim())
+                .lastName(lastName.trim())
+                .phone(phone)
+                .teacherId(teacherId)
+                .needsBook(Boolean.TRUE.equals(book))
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        // Assign timeSlotId if Student has such field (best-effort)
+        try {
+            s.getClass().getMethod("setTimeSlotId", Long.class).invoke(s, timeSlotId);
+        } catch (NoSuchMethodException ignored) {
+        } catch (Exception ex) {
+            log.warn("Failed to set timeSlotId on Student via reflection: {}", ex.getMessage());
+        }
+
+        // assign package and capture price/count
+        s.assignPackage(pkg);
+        if (pkg.getLessonsCount() != null) s.setRemainingLessons(pkg.getLessonsCount());
+
+        BigDecimal paid = initialPayment == null ? BigDecimal.ZERO : initialPayment;
+        BigDecimal debt = pkg.getPrice().subtract(paid);
+        if (debt.compareTo(BigDecimal.ZERO) < 0) debt = BigDecimal.ZERO;
+        s.setDebt(debt);
+
+        // generate studentCode if missing
+        if (s.getStudentCode() == null) {
+            s.setStudentCode(generateTemporaryCode(firstName, lastName));
+        }
+
+        Student saved = studentRepository.save(s);
+
+        // ensure nice code
+        if (saved.getStudentCode() != null && saved.getStudentCode().startsWith("TMP-")) {
+            String real = "S" + (100000 + saved.getId());
+            saved.setStudentCode(real);
+            saved = studentRepository.save(saved);
+        }
+
+        log.info("Created student id={} name={} {}, package={}", saved.getId(), saved.getFirstName(), saved.getLastName(), pkg.getCode());
+        return saved;
+    }
+
+    /**
      * Return count of students for given teacherId.
      */
     @Transactional(readOnly = true)
@@ -159,6 +226,47 @@ public class StudentService {
         if (q == null || q.trim().isEmpty()) return findAll();
         String t = q.trim();
         return studentRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrStudentCodeContainingIgnoreCase(t, t, t);
+    }
+
+    /**
+     * Delete student by id.
+     * Safe: catches EmptyResultDataAccessException if id not found.
+     */
+    @Transactional
+    public void deleteById(Long id) {
+        if (id == null) return;
+        try {
+            studentRepository.deleteById(id);
+            log.info("Deleted student with id={}", id);
+        } catch (EmptyResultDataAccessException ex) {
+            log.warn("Tried to delete non-existing student id={}", id);
+        }
+    }
+
+    /**
+     * Decrement remainingLessons by 1 for a student.
+     * - If remainingLessons is null -> return null (not tracked).
+     * - If remainingLessons is zero -> keep 0 and return 0.
+     *
+     * @param studentId id of student
+     * @return new remainingLessons (Integer), or null if not applicable
+     */
+    @Transactional
+    public Integer consumeLesson(Long studentId) {
+        Student s = studentRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("Student not found: " + studentId));
+        Integer remaining = s.getRemainingLessons();
+        if (remaining == null) {
+            // Not tracked (could be unlimited or missing) — nothing to consume
+            return null;
+        }
+        if (remaining <= 0) {
+            s.setRemainingLessons(0);
+        } else {
+            s.setRemainingLessons(remaining - 1);
+        }
+        s.setUpdatedAt(Instant.now());
+        studentRepository.save(s);
+        return s.getRemainingLessons();
     }
 
     /* ---------- helpers ---------- */

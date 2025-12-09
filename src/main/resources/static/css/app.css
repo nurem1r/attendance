@@ -1,0 +1,107 @@
+/* Общий CSS для упрощенного интерфейса (взято по духу со скриншота) */
+:root{
+    --bg:#f4f6f8;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --primary:#1976d2;
+    --success:#28a745;
+    --danger:#e74c3c;
+    --warning:#f0ad4e;
+    --accent:#f1f5f9;
+    --radius:10px;
+    --shadow: 0 6px 20px rgba(20,30,50,0.06);
+    --table-border:#e6e9ee;
+}
+
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background:var(--bg);
+    color:#111827;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    padding:18px;
+}
+
+/* Page container */
+.container{
+    max-width:1200px;
+    margin:0 auto;
+}
+
+/* Header row for dashboards */
+.header-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:16px;
+}
+.header-left h1{font-size:1.1rem;margin:0}
+.header-actions{display:flex;gap:8px;align-items:center}
+
+/* Top stat cards */
+.top-cards{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.stat-card{
+    background:var(--card);
+    padding:14px 16px;
+    border-radius:8px;
+    box-shadow:var(--shadow);
+    border:1px solid rgba(0,0,0,0.03);
+    min-width:160px;
+}
+.stat-card .num{font-weight:800;font-size:1.2rem;color:var(--primary)}
+.stat-card .label{color:var(--muted);font-size:0.9rem;margin-top:6px}
+
+/* Search and controls */
+.controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.input{
+    padding:10px 12px;border-radius:8px;border:1px solid var(--table-border);background:#fff;min-width:260px;
+}
+.small{font-size:0.9rem;color:var(--muted)}
+
+/* Table */
+.table-card{background:var(--card);padding:10px;border-radius:10px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,0.03)}
+table{width:100%;border-collapse:collapse}
+thead th{background:transparent;text-align:left;color:var(--muted);font-weight:700;padding:12px 10px;border-bottom:1px solid var(--table-border)}
+tbody td{padding:12px 10px;border-bottom:1px solid var(--table-border);vertical-align:middle}
+
+/* Student row highlights */
+.row-low { background: linear-gradient(90deg, rgba(255,239,239,0.4), transparent); }
+.row-warn { background: linear-gradient(90deg, rgba(255,250,235,0.45), transparent); }
+.row-debt { box-shadow: inset 6px 0 0 rgba(231,76,60,0.08); }
+
+/* Status pills */
+.pill{
+    display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;font-size:0.85rem;
+}
+.pill.present{background:rgba(40,167,69,0.12);color:var(--success)}
+.pill.late{background:rgba(240,173,78,0.12);color:var(--warning)}
+.pill.absent{background:rgba(231,76,60,0.08);color:var(--danger)}
+.pill.excused{background:#f2f4f7;color:var(--muted)}
+
+/* Small action letter buttons */
+.btn-letter{
+    width:36px;height:36px;border-radius:6px;border:none;color:#fff;font-weight:800;cursor:pointer;margin-right:6px;
+    display:inline-flex;align-items:center;justify-content:center;font-size:0.95rem;
+    box-shadow:0 6px 14px rgba(13, 71, 161, 0.06);
+}
+.btn-letter.p{background:#28a745} /* Present - green */
+.btn-letter.a{background:#e74c3c} /* Absent - red */
+.btn-letter.l{background:#f0ad4e} /* Late - orange */
+.btn-letter.e{background:#6c757d} /* Excused - gray */
+
+/* consume small button */
+.btn-consume{padding:6px 10px;border-radius:8px;background:#fff;border:1px solid var(--table-border);cursor:pointer;margin-left:6px}
+
+/* Forms */
+.form-row{display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+
+/* Error page */
+.error-wrap{max-width:800px;margin:40px auto;padding:40px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);text-align:center}
+.error-wrap h2{font-size:1.6rem;margin-bottom:6px}
+.error-wrap p{color:var(--muted);margin-bottom:14px}
+
+/* small helper */
+.kv{color:var(--muted);font-size:0.85rem}

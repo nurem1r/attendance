@@ -1,14 +1,18 @@
 package com.example.attendance.controller;
 
-import com.example.attendance.entities.*;
+import com.example.attendance.entities.AppUser;
+import com.example.attendance.entities.Student;
+import com.example.attendance.entities.Teacher;
+import com.example.attendance.entities.TimeSlot;
+import com.example.attendance.entities.LessonPackage;
+import com.example.attendance.enums.PackageType;
+import com.example.attendance.repository.LessonPackageRepository;
 import com.example.attendance.service.AppUserService;
 import com.example.attendance.service.AttendanceService;
 import com.example.attendance.service.PaymentService;
 import com.example.attendance.service.StudentService;
 import com.example.attendance.service.TeacherService;
 import com.example.attendance.service.TimeSlotService;
-import com.example.attendance.repository.LessonPackageRepository;
-import com.example.attendance.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +40,6 @@ public class ManagerController {
     private final PaymentService paymentService;
     private final AttendanceService attendanceService;
     private final LessonPackageRepository lessonPackageRepository;
-    private final StudentRepository studentRepository;
 
     @GetMapping
     public String dashboard(Model model) {
@@ -113,41 +116,35 @@ public class ManagerController {
 
     @GetMapping("/add_student")
     public String addStudentForm(Model model) {
-        model.addAttribute("packageTypes", com.example.attendance.enums.PackageType.values());
+        // Pass actual LessonPackage entities to the template so UI can show friendly titles/prices.
+        List<LessonPackage> packages = lessonPackageRepository.findAll();
+        model.addAttribute("packages", packages);
+
+        // Keep teachers for the select
         model.addAttribute("teachers", teacherService.findAll());
         return "manager/add_student";
     }
 
-    @PostMapping("/manager/add_student")
-    public String createStudent(@RequestParam String firstName,
-                                @RequestParam String lastName,
-                                @RequestParam(required=false) String phone,
-                                @RequestParam Long packageId,
-                                @RequestParam(required=false, defaultValue = "0") BigDecimal initialPayment,
-                                Model model) {
-        LessonPackage pkg = lessonPackageRepository.findById(packageId).orElse(null);
-        if (pkg == null) {
-            model.addAttribute("error", "Package not found");
-            return "manager/add_student";
+    @PostMapping("/add_student")
+    public String addStudent(@RequestParam String firstName,
+                             @RequestParam String lastName,
+                             @RequestParam(required = false) String phone,
+                             // try to accept packageId (preferred). Keep PackageType for backward compatibility.
+                             @RequestParam(required = false) Long packageId,
+                             @RequestParam(required = false) PackageType packageType,
+                             @RequestParam Long teacherId,
+                             @RequestParam(required = false) Long timeSlotId,
+                             @RequestParam(required = false) Boolean book,
+                             @RequestParam(required = false) BigDecimal initialPayment,
+                             @RequestParam(required = false) BigDecimal debt) {
+
+        // Prefer packageId (new flow). Fall back to enum-based flow for compatibility.
+        if (packageId != null) {
+            studentService.createStudentWithPackage(firstName, lastName, phone, packageId, teacherId, timeSlotId, book, initialPayment);
+        } else {
+            // legacy: manager passes enum PackageType; pass through to existing service method
+            studentService.createStudent(firstName, lastName, phone, packageType, teacherId, timeSlotId, book, debt);
         }
-
-        Student s = new Student();
-        s.setFirstName(firstName);
-        s.setLastName(lastName);
-        s.setPhone(phone);
-        // привязка пакета
-        s.setPackageCode(pkg.getCode()); // или s.setPackageId(pkg.getId());
-        s.setPackagePrice(pkg.getPrice());
-        // debt = package.price - initialPayment (если >0)
-        BigDecimal paid = initialPayment == null ? BigDecimal.ZERO : initialPayment;
-        BigDecimal debt = pkg.getPrice().subtract(paid);
-        if (debt.compareTo(BigDecimal.ZERO) < 0) debt = BigDecimal.ZERO; // не позволяем отрицательный долг
-        s.setDebt(debt);
-        // сохранить студента
-        studentRepository.save(s);
-
-        // при желании — создать платежную запись Payment с sum=paid, связать со студентом
-
         return "redirect:/manager/student_list";
     }
 
