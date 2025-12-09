@@ -62,47 +62,47 @@
 //    }
 //}
 
-package com.example.attendance.config;
-
-import com.example.attendance.entities.LessonPackage;
-import com.example.attendance.repository.LessonPackageRepository;
-import jakarta.annotation.PostConstruct;
-import org.springframework.stereotype.Component;
-import java.math.BigDecimal;
-
-@Component
-public class DataInitializer {
-
-    private final LessonPackageRepository pkgRepo;
-
-    public DataInitializer(LessonPackageRepository pkgRepo) {
-        this.pkgRepo = pkgRepo;
-    }
-
-    @PostConstruct
-    public void init() {
-        // LESSONS_12_MWF — пон/ср/пт — 3400
-        createIfMissing("LESSONS_12_MWF", "12 lessons (Mon/Wed/Fri)", BigDecimal.valueOf(3400), "MWF", 12);
-
-        // LESSONS_12_TTS — вт/чт/сб — 3000
-        createIfMissing("LESSONS_12_TTS", "12 lessons (Tue/Thu/Sat)", BigDecimal.valueOf(3000), "TTS", 12);
-
-        // LESSONS_6_MON_SAT — 6 times per week (Mon-Sat) — 5400
-        createIfMissing("LESSONS_6_MON_SAT", "6 lessons/week (Mon-Sat)", BigDecimal.valueOf(5400), "MON_SAT", 24);
-
-        // LESSONS_24 — keep it, price 5400
-        createIfMissing("LESSONS_24", "24 lessons", BigDecimal.valueOf(5400), "CUSTOM", 24);
-    }
-
-    private void createIfMissing(String code, String title, BigDecimal price, String schedule, Integer count) {
-        if (pkgRepo.findByCode(code).isEmpty()) {
-            LessonPackage p = new LessonPackage();
-            p.setCode(code);
-            p.setTitle(title);
-            p.setPrice(price);
-            p.setScheduleCode(schedule);
-            p.setLessonsCount(count);
-            pkgRepo.save(p);
-        }
-    }
-}
+//package com.example.attendance.config;
+//
+//import com.example.attendance.entities.LessonPackage;
+//import com.example.attendance.repository.LessonPackageRepository;
+//import jakarta.annotation.PostConstruct;
+//import org.springframework.stereotype.Component;
+//import java.math.BigDecimal;
+//
+//@Component
+//public class DataInitializer {
+//
+//    private final LessonPackageRepository pkgRepo;
+//
+//    public DataInitializer(LessonPackageRepository pkgRepo) {
+//        this.pkgRepo = pkgRepo;
+//    }
+//
+//    @PostConstruct
+//    public void init() {
+//        // LESSONS_12_MWF — пон/ср/пт — 3400
+//        createIfMissing("LESSONS_12_MWF", "12 lessons (Mon/Wed/Fri)", BigDecimal.valueOf(3400), "MWF", 12);
+//
+//        // LESSONS_12_TTS — вт/чт/сб — 3000
+//        createIfMissing("LESSONS_12_TTS", "12 lessons (Tue/Thu/Sat)", BigDecimal.valueOf(3000), "TTS", 12);
+//
+//        // LESSONS_6_MON_SAT — 6 times per week (Mon-Sat) — 5400
+//        createIfMissing("LESSONS_6_MON_SAT", "6 lessons/week (Mon-Sat)", BigDecimal.valueOf(5400), "MON_SAT", 24);
+//
+//        // LESSONS_24 — keep it, price 5400
+//        createIfMissing("LESSONS_24", "24 lessons", BigDecimal.valueOf(5400), "CUSTOM", 24);
+//    }
+//
+//    private void createIfMissing(String code, String title, BigDecimal price, String schedule, Integer count) {
+//        if (pkgRepo.findByCode(code).isEmpty()) {
+//            LessonPackage p = new LessonPackage();
+//            p.setCode(code);
+//            p.setTitle(title);
+//            p.setPrice(price);
+//            p.setScheduleCode(schedule);
+//            p.setLessonsCount(count);
+//            pkgRepo.save(p);
+//        }
+//    }
+//}

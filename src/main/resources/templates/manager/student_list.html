@@ -34,6 +34,7 @@
                 <th>Пакет</th>
                 <th>Остаток</th>
                 <th>Стоимость (сом)</th>
+                <th>Долг (сом)</th>
                 <th>Статус</th>
                 <th>Действия</th>
             </tr>
@@ -48,6 +49,8 @@
                 <td th:text="${s.packageCode != null ? s.packageCode : (s.lessonPackage != null ? s.lessonPackage.title : '-') }">Пакет</td>
                 <td th:text="${s.remainingLessons == null ? '-' : s.remainingLessons}">0</td>
                 <td th:text="${s.packagePrice == null ? '-' : s.packagePrice}">0</td>
+                <!-- Новый столбец Долг -->
+                <td th:text="${s.debt == null ? '-' : s.debt}">-</td>
                 <td>
                     <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status.name() == 'PRESENT'}" class="pill present">Присутствует</span>
                     <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status.name() == 'LATE'}" class="pill late">Опоздал</span>
