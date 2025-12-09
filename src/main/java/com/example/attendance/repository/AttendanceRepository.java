@@ -1,4 +1,4 @@
-package com.example.attendance.repositories;
+package com.example.attendance.repository;
 
 import com.example.attendance.entities.Attendance;
 import com.example.attendance.enums.AttendanceStatus;

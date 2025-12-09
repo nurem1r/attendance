@@ -1,7 +1,7 @@
 package com.example.attendance.service;
 
 import com.example.attendance.entities.TimeSlot;
-import com.example.attendance.repositories.TimeSlotRepository;
+import com.example.attendance.repository.TimeSlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

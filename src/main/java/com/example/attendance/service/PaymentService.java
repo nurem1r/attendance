@@ -2,7 +2,7 @@ package com.example.attendance.service;
 
 import com.example.attendance.entities.Payment;
 import com.example.attendance.entities.Student;
-import com.example.attendance.repositories.PaymentRepository;
+import com.example.attendance.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

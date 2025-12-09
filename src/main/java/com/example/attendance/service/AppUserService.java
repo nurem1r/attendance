@@ -2,7 +2,7 @@ package com.example.attendance.service;
 
 import com.example.attendance.entities.AppUser;
 import com.example.attendance.enums.UserRole;
-import com.example.attendance.repositories.AppUserRepository;
+import com.example.attendance.repository.AppUserRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;

@@ -4,7 +4,7 @@ import com.example.attendance.entities.Attendance;
 import com.example.attendance.entities.Student;
 import com.example.attendance.enums.AttendanceStatus;
 import com.example.attendance.enums.PackageType;
-import com.example.attendance.repositories.AttendanceRepository;
+import com.example.attendance.repository.AttendanceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
