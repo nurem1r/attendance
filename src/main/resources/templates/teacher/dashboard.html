@@ -4,104 +4,88 @@
     <meta charset="UTF-8"/>
     <title>Дашборд учителя</title>
     <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}"/>
+    <meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="min-date" th:content="${@environment.getProperty('attendance.minDate','2025-12-01')}" />
+    <style>
+        /* action buttons restored to compact size and previous-ish colors */
+        .actions { display:flex; gap:8px; align-items:center; }
+        .action-btn {
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            width:36px;
+            height:36px;
+            border-radius:8px;
+            cursor:pointer;
+            border:none;
+            color:white;
+            box-shadow:0 4px 10px rgba(0,0,0,0.08);
+            transition:transform .12s ease, box-shadow .12s ease, opacity .12s;
+            font-size:0.95rem;
+        }
+        .action-present { background: linear-gradient(135deg,#48bb78,#38a169); } /* green */
+        .action-late    { background: linear-gradient(135deg,#f6ad55,#ed8936); } /* orange */
+        .action-absent  { background: linear-gradient(135deg,#f56565,#e53e3e); } /* red */
+        .action-excused { background: linear-gradient(135deg,#60a5fa,#3b82f6); } /* calm blue */
+
+        .action-btn i { font-size:1.05rem; }
+
+        /* extra control compact */
+        .extra-compact { padding:6px 8px; border-radius:6px; background:#60a5fa; color:#fff; font-weight:600; }
+        .extra-panel { display:flex; align-items:center; gap:6px; padding:4px; border-radius:6px; background:#fff; border:1px solid #e2e8f0; }
+        .extra-panel button { width:28px; height:28px; border-radius:6px; border:none; cursor:pointer; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+
+        /* row highlight classes (keeps text color unchanged) */
+        .row-debt { background: linear-gradient(90deg, rgba(255,230,230,0.95) 0%, rgba(255,255,255,1) 100%); border-left: 8px solid #c62828; box-shadow: 0 6px 20px rgba(198,40,40,0.03); }
+        .row-warn { background: linear-gradient(90deg, rgba(255,252,240,0.95) 0%, rgba(255,255,255,1) 100%); border-left: 8px solid #ed8936; }
+        .row-low { background: linear-gradient(90deg, rgba(255,245,230,0.95) 0%, rgba(255,255,255,1) 100%); border-left: 8px solid #ff8f00; }
+
+        .negative-warning { color:#b91c1c; font-weight:700; margin-left:8px; font-size:0.9rem; }
+
+        /* keep other table styles as in app.css */
+    </style>
 </head>
 <body>
 <div class="container">
     <div class="header-row">
         <div class="header-left">
             <h1>Дашборд учителя</h1>
-            <div class="small">Просмотр и отметка посещаемости</div>
+            <div class="small">Отметки посещаемости — выбирайте дату и отмечайте студентов</div>
         </div>
-        <div class="header-actions">
-            <form th:action="@{/logout}" method="post" th:object="${_csrf}">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                <button type="submit" class="login-btn small">Выйти</button>
-            </form>
-        </div>
-    </div>
-
-    <div class="quick-stats">
-        <div class="stat-card">
-            <div class="stat-number" th:text="${students != null ? #lists.size(students) : 0}">0</div>
-            <div class="stat-label">Всего студентов</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" th:text="${presentCount}">0</div>
-            <div class="stat-label">Присутствует</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" th:text="${lateCount}">0</div>
-            <div class="stat-label">Опоздали</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" th:text="${absentCount}">0</div>
-            <div class="stat-label">Отсутствуют</div>
-        </div>
+        <form th:action="@{/logout}" method="post" th:object="${_csrf}">
+            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="btn-consume">Выйти</button>
+        </form>
     </div>
 
     <div class="controls">
-        <input class="input" id="searchInput" placeholder="Поиск по имени или коду..." />
-        <input class="input" type="date" id="attendanceDate" th:value="${today}" />
-        <button class="login-btn small" id="loadBtn">Загрузить</button>
-        <div class="small">Выберите дату для отметки (можно прошлые дни)</div>
+    <span class="calendar-wrap">Дата:
+      <input id="datePicker" type="text" class="flatpickr-input" />
+    </span>
     </div>
 
-    <div class="table-card">
-        <form id="attendanceForm" th:action="@{/teacher/attendance/save}" method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-            <input type="hidden" name="date" id="formDate" th:value="${today}" />
-
-            <table>
-                <thead>
-                <tr>
-                    <th>Фамилия и имя</th>
-                    <th>Пакет</th>
-                    <th>Остаток</th>
-                    <th>Стоимость (сом)</th>
-                    <th>Долг (сом)</th>
-                    <th>Статус</th>
-                    <th>Действия</th>
-                </tr>
-                </thead>
-                <tbody id="studentsTbody">
-                <tr th:each="s : ${students}"
-                    th:with="rc=${rowClassMap != null && rowClassMap.containsKey(s.id) ? rowClassMap[s.id] : ''}"
-                    th:class="${rc}">
-                    <td>
-                        <div th:text="${s.lastName + ' ' + s.firstName}">Иванов Иван</div>
-                        <div class="kv" th:text="${s.phone}">phone</div>
-                    </td>
-                    <td th:text="${s.lessonPackage != null ? s.lessonPackage.title : (s.packageCode != null ? s.packageCode : '-') }">Пакет</td>
-                    <td th:text="${s.remainingLessons == null ? '-' : s.remainingLessons}">0</td>
-                    <td th:text="${s.packagePrice == null ? '-' : s.packagePrice}">0</td>
-                    <!-- Новый столбец Долг -->
-                    <td th:text="${s.debt == null ? '-' : s.debt}">-</td>
-                    <td>
-                        <span th:if="${todays != null and todays[s.id] != null and todays[s.id].status != null and todays[s.id].status.name() == 'PRESENT'}" class="pill present">Присутствует</span>
-                        <span th:if="${todays != null and todays[s.id] != null and todays[s.id].status != null and todays[s.id].status.name() == 'LATE'}" class="pill late">Опоздал</span>
-                        <span th:if="${todays != null and todays[s.id] != null and todays[s.id].status != null and todays[s.id].status.name() == 'ABSENT'}" class="pill absent">Отсутствует</span>
-                        <span th:if="${!(todays != null and todays[s.id] != null)}" class="pill excused">Не отмечен</span>
-                    </td>
-                    <td>
-                        <button type="button" class="btn-letter p" th:onclick="|markAndSet(${s.id},'PRESENT')|">P</button>
-                        <button type="button" class="btn-letter l" th:onclick="|markAndSet(${s.id},'LATE')|">L</button>
-                        <button type="button" class="btn-letter a" th:onclick="|markAndSet(${s.id},'ABSENT')|">A</button>
-                        <button type="button" class="btn-letter e" th:onclick="|markAndSet(${s.id},'EXCUSED')|">E</button>
-                        <button type="button" class="btn-consume" th:onclick="|consume(${s.id}, this)|">-1 урок</button>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-
-            <div style="margin-top:12px">
-                <button type="submit" class="login-btn">Сохранить отметки</button>
-            </div>
-        </form>
+    <div class="table-card" id="attendanceCard">
+        <table id="studentsTable">
+            <thead>
+            <tr>
+                <th>Фамилия и имя</th>
+                <th>Пакет</th>
+                <th>Книга</th>
+                <th>Остаток</th>
+                <th>Статус</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
 </div>
 
-<script>
-    /* simplified JS omitted for brevity (unchanged) */
-</script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="/js/teacher-dashboard.js"></script>
 </body>
 </html>
