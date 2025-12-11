@@ -14,7 +14,7 @@
         </div>
         <div class="header-actions">
             <!-- Заменили кнопку Выйти на Назад в дашборд -->
-            <a th:href="@{/manager}" class="btn-consume">Назад в дашборд</a>
+            <a th:href="@{/manager}" class="btn-consume">Назад</a>
         </div>
     </div>
 
@@ -81,9 +81,9 @@
                 <label style="width:160px; align-self:flex-end; margin-left:12px;">
                     Книга
                     <select class="input" name="book">
-                        <option th:value="">Не указано</option>
-                        <option th:value="true" th:selected="${student.needsBook == true}">Да</option>
-                        <option th:value="false" th:selected="${student.needsBook != true}">Нет</option>
+                        <option value="">Не указано</option>
+                        <option value="true" th:selected="${student.needsBook == true}">Да</option>
+                        <option value="false" th:selected="${student.needsBook != true}">Нет</option>
                     </select>
                 </label>
             </div>
