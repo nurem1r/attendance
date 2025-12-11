@@ -68,9 +68,16 @@
             <option value="">-- выберите учителя сначала --</option>
           </select>
         </label>
-        <div style="align-self:flex-end; margin-left:12px; color:#666; font-size:0.9em">
-          (опционально)
-        </div>
+
+        <!-- Новое поле: Наличие книги -->
+        <label style="width:160px; align-self:flex-end; margin-left:12px;">
+          Книга
+          <select class="input" name="book">
+            <option value="">Не указано</option>
+            <option value="true">Да</option>
+            <option value="false" selected>Нет</option>
+          </select>
+        </label>
       </div>
 
       <div style="margin-top:12px">
