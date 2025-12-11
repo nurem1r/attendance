@@ -176,6 +176,8 @@ public class ManagerController {
         model.addAttribute("teacherMap", teacherMap);
         model.addAttribute("missedMap", missedMap);
         model.addAttribute("paymentsMap", paymentsMap);
+        // expose current search query so template can keep input value
+        model.addAttribute("q", q);
 
         return "manager/student_list";
     }
