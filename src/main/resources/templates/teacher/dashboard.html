@@ -45,6 +45,10 @@
 
         .negative-warning { color:#b91c1c; font-weight:700; margin-left:8px; font-size:0.9rem; }
 
+        /* debt cell styling - uses existing app.css rules if any; keep bold for emphasis */
+        td.debt-cell { font-weight:700; text-align:right; padding-right:12px; min-width:110px; }
+
+        .student-link { /* no special cursor/underline — disabled */ }
         /* keep other table styles as in app.css */
     </style>
 </head>
@@ -55,16 +59,21 @@
             <h1>Дашборд учителя</h1>
             <div class="small">Отметки посещаемости — выбирайте дату и отмечайте студентов</div>
         </div>
-        <form th:action="@{/logout}" method="post" th:object="${_csrf}">
-            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-            <button type="submit" class="btn-consume">Выйти</button>
-        </form>
+        <div class="header-actions">
+            <form th:action="@{/logout}" method="post" th:object="${_csrf}">
+                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn-consume">Выйти</button>
+            </form>
+            <button id="saveChangesBtn" class="btn-consume">Сохранить изменения</button>
+        </div>
     </div>
 
     <div class="controls">
     <span class="calendar-wrap">Дата:
       <input id="datePicker" type="text" class="flatpickr-input" />
     </span>
+        <small id="minDateNote" style="margin-left:12px;color:#718096"
+               th:text="'Минимальная дата: ' + ${@environment.getProperty('attendance.minDate','2025-12-01')}"></small>
     </div>
 
     <div class="table-card" id="attendanceCard">
@@ -75,6 +84,7 @@
                 <th>Пакет</th>
                 <th>Книга</th>
                 <th>Остаток</th>
+                <th>Долг (сом)</th>
                 <th>Статус</th>
                 <th>Действия</th>
             </tr>
@@ -84,6 +94,8 @@
         </table>
     </div>
 </div>
+
+<!-- drawer removed while student_status is frozen -->
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="/js/teacher-dashboard.js"></script>

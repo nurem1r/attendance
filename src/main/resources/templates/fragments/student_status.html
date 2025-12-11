@@ -1,54 +1,120 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8"/>
-    <title>Статус студента</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
-</head>
-<body>
-<div class="container">
-    <div class="header-row">
-        <div class="header-left">
-            <h1 th:text="${student.lastName + ' ' + student.firstName}">Студент</h1>
-            <div class="small" th:text="'Пакет: ' + (student.lessonPackage != null ? student.lessonPackage.title : student.packageCode)">Пакет</div>
+<div data-drawer-save="true" style="padding:8px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+            <h3 th:text="${student.lastName + ' ' + student.firstName}">ФИО</h3>
+            <div class="kv" style="color:#718096;">
+                <div>Код: <strong th:text="${student.studentCode}">SXXXXX</strong></div>
+                <div>Пакет: <span th:text="${student.lessonPackage != null ? student.lessonPackage.title : student.packageCode}">Пакет</span></div>
+            </div>
         </div>
-        <div class="header-actions">
-            <a th:href="@{/manager/student_list}" class="btn-consume">Назад</a>
+        <!-- close (cross) only, no top save -->
+        <div>
+            <button id="fragmentCloseBtn" class="close-btn" style="background:transparent; border:none; font-size:1.4rem; cursor:pointer;">✕</button>
         </div>
     </div>
 
-    <div class="table-card">
-        <div style="display:flex;gap:12px;margin-bottom:12px">
-            <div class="kv">Остаток: <strong th:text="${student.remainingLessons == null ? '-' : student.remainingLessons}">0</strong></div>
-            <div class="kv">Стоимость: <strong th:text="${student.packagePrice == null ? '-' : student.packagePrice}">0</strong></div>
-            <div class="kv">Долг: <strong th:text="${student.debt == null ? 0 : student.debt}">0</strong></div>
-        </div>
-
-        <table>
-            <thead>
-            <tr><th>Дата</th><th>Статус</th><th>Отмечено</th><th>Время прихода</th></tr>
-            </thead>
-            <tbody>
-            <tr th:each="a : ${attendances}">
-                <td th:text="${#dates.format(a.lessonDate, 'yyyy-MM-dd')}">2025-12-01</td>
-                <td>
-              <span th:switch="${a.status}">
-                <span th:case="'PRESENT'" class="pill present">Присутствует</span>
-                <span th:case="'LATE'" class="pill late">Опоздал</span>
-                <span th:case="'ABSENT'" class="pill absent">Отсутствует</span>
-                <span th:case="'EXCUSED'" class="pill excused">Освобождён</span>
-                <span th:case="*">${a.status}</span>
-              </span>
-                </td>
-                <td th:text="${a.markedByUserId}">user</td>
-                <td th:text="${a.checkinTime == null ? 'N/A' : #dates.format(a.checkinTime, 'HH:mm')}">--:--</td>
-            </tr>
-            <tr th:if="${attendances == null || #lists.isEmpty(attendances)}">
-                <td colspan="4" class="small">Записей нет</td>
-            </tr>
-            </tbody>
-        </table>
+    <div class="kv" style="color:#374151; margin-bottom:10px;">
+        <div>Телефон: <strong th:text="${student.phone}">+996...</strong></div>
+        <div>Остаток: <strong id="fragRemaining" th:text="${student.remainingLessons}">0</strong></div>
+        <div>Долг: <strong id="fragDebt" th:text="${student.debt}">0</strong></div>
+        <div>Книга: <strong th:text="${student.needsBook ? 'Да' : 'Нет'}">Нет</strong></div>
+        <div style="margin-top:8px;color:#6b7280">Дата: <span th:text="${date}">2025-12-11</span></div>
     </div>
+
+    <hr/>
+
+    <!-- Payment and note (teacher should be able to post payment similar to manager) -->
+    <div style="margin-top:12px;">
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Платёж (сом)</label>
+        <input id="drawerPaymentAmount" type="number" min="0" value="0" style="width:100%; padding:10px; border-radius:8px; border:1px solid #e2e8f0;" />
+    </div>
+
+    <div style="margin-top:12px;">
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Заметка</label>
+        <textarea id="drawerPaymentNote" rows="3" style="width:100%; padding:10px; border-radius:8px; border:1px solid #e2e8f0;" placeholder="Комментарий к платежу (необязательно)"></textarea>
+    </div>
+
+    <div style="margin-top:18px; display:flex; gap:8px;">
+        <button id="fragmentSavePayment" class="btn-consume">Сохранить платёж</button>
+        <!-- no bottom Close button as requested; top cross closes -->
+    </div>
+
+    <script th:inline="javascript">
+        (function(){
+            const studentId = /*[[${student.id}]]*/ '0';
+            const baseRemaining = /*[[${student.remainingLessons != null ? student.remainingLessons : 'null'}]]*/ null;
+            const initialDebt = /*[[${student.debt != null ? student.debt : 0}]]*/ 0;
+            const dateStr = '/*[[${date}]]*/';
+
+            const amountEl = document.getElementById('drawerPaymentAmount');
+            const noteEl = document.getElementById('drawerPaymentNote');
+            const saveBtn = document.getElementById('fragmentSavePayment');
+            const closeBtn = document.getElementById('fragmentCloseBtn');
+            const fragRemaining = document.getElementById('fragRemaining');
+            const fragDebt = document.getElementById('fragDebt');
+
+            // Close handler - call outer close if available
+            closeBtn.addEventListener('click', function(){
+                if (typeof window.closeDrawer === 'function') window.closeDrawer();
+                else { /* fallback: try to hide drawer via parent */ }
+            });
+
+            // Save payment handler (posts to backend)
+            saveBtn.addEventListener('click', async function(){
+                const amount = parseInt(amountEl.value || '0',10) || 0;
+                const note = noteEl.value || '';
+
+                if (amount <= 0) {
+                    if (!confirm('Вы указали платёж ≤ 0. Продолжить?')) return;
+                }
+
+                const payload = { amount: amount, note: note };
+
+                // CSRF
+                const meta = document.querySelector('meta[name="_csrf"]');
+                const metaHeader = document.querySelector('meta[name="_csrf_header"]');
+                const headers = { 'Content-Type': 'application/json' };
+                if (meta) headers[metaHeader ? metaHeader.getAttribute('content') : 'X-CSRF-TOKEN'] = meta.getAttribute('content');
+
+                try {
+                    const res = await fetch('/teacher/student/' + encodeURIComponent(studentId) + '/payment', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: headers,
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) {
+                        const body = await res.text().catch(()=>null);
+                        throw new Error(body || 'Server error');
+                    }
+                    const json = await res.json();
+                    if (json.success) {
+                        // update UI values in fragment
+                        fragDebt.textContent = json.newDebt;
+                        // optionally update remaining if payload affects it (we don't change remaining here)
+                        // notify parent to reload the row (if parent exposes function)
+                        if (typeof window.parentRefreshStudentRow === 'function') {
+                            window.parentRefreshStudentRow(studentId);
+                        } else {
+                            // as fallback, request outer dashboard to reload current date by calling a known function
+                            if (typeof window.parentReloadAttendance === 'function') window.parentReloadAttendance();
+                        }
+                        alert('Платёж сохранён');
+                        // close drawer
+                        if (typeof window.closeDrawer === 'function') window.closeDrawer();
+                    } else {
+                        throw new Error(json.error || 'save_failed');
+                    }
+                } catch (e) {
+                    alert('Ошибка при сохранении платежа: ' + e.message);
+                    console.error(e);
+                }
+            });
+
+            // expose a simple function for outer script to call if needed
+            window.fragmentPaymentSaved = function() {
+                // can be used by parent if needed
+            };
+        })();
+    </script>
 </div>
-</body>
-</html>

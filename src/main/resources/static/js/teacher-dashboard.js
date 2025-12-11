@@ -1,9 +1,7 @@
 /**
- * teacher-dashboard.js — скорректирован:
- * - "Остаток" отображается только в колонке Remaining (как раньше)
- * - нет inline-бейджей под ФИО
- * - обновление состояния строки (row-debt/row-warn/row-low) оставлено
- * - компактные action buttons (36x36)
+ * teacher-dashboard.js — student_status временно отключён:
+ * - ФИО не кликаются, drawer не используется
+ * - Остальной функционал сохранить/mark/update остался
  */
 (function(){
     const apiJsonUrl = '/teacher/attendance/json';
@@ -42,7 +40,7 @@
         tr.dataset.baseRemaining = tr.dataset.remaining;
         tr.classList.remove('row-modified');
 
-        // name cell (no badges under name)
+        // name cell — non-clickable while student_status is frozen
         const tdName = document.createElement('td');
         tdName.innerHTML = `<div style="font-weight:600">${escapeHtml(student.lastName)} ${escapeHtml(student.firstName)}</div>
                         <div class="kv" style="color:#666">${escapeHtml(student.studentCode || '')}</div>`;
@@ -58,13 +56,19 @@
         tdBook.textContent = (student.needsBook == true ? 'Да' : 'Нет');
         tr.appendChild(tdBook);
 
-        // remaining — explicit column (kept as before)
+        // remaining — explicit column
         const tdRemaining = document.createElement('td');
         tdRemaining.className = 'remaining-cell';
         tdRemaining.textContent = (student.remainingLessons == null ? '-' : student.remainingLessons);
         tr.appendChild(tdRemaining);
 
-        // status cell
+        // debt column
+        const tdDebt = document.createElement('td');
+        tdDebt.className = 'debt-cell';
+        tdDebt.textContent = (student.debt == null ? '-' : student.debt);
+        tr.appendChild(tdDebt);
+
+        // status
         const tdStatus = document.createElement('td');
         tdStatus.className = 'status-cell';
         const att = student.attendance;
@@ -84,7 +88,8 @@
         const btnExcused = makeActionBtn('excused', 'action-excused', 'fa-user-shield', 'EXCUSED');
 
         [btnPresent, btnLate, btnAbsent, btnExcused].forEach(b => {
-            b.addEventListener('click', () => {
+            b.addEventListener('click', (ev) => {
+                ev.stopPropagation();
                 const sid = tr.dataset.studentId;
                 const prev = changes.get(sid) || { status: null, extra: 0 };
                 prev.status = b.dataset.status;
@@ -101,7 +106,7 @@
         actionsDiv.appendChild(btnExcused);
         actionsDiv.appendChild(btnAbsent);
 
-        // extra control (same behavior)
+        // extra control
         const extraWrapper = document.createElement('div');
         extraWrapper.className = 'extra-ctrl';
         const compact = document.createElement('button');
@@ -121,7 +126,8 @@
 
         compact.addEventListener('click', () => { panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none'; });
 
-        inc.addEventListener('click', () => {
+        inc.addEventListener('click', (ev) => {
+            ev.stopPropagation();
             const sid = tr.dataset.studentId;
             const obj = changes.get(sid) || { status: null, extra: 0 };
             obj.extra = (obj.extra || 0) + 1;
@@ -131,7 +137,8 @@
             updateRemainingDisplay(tr);
             updateRowState(tr);
         });
-        dec.addEventListener('click', () => {
+        dec.addEventListener('click', (ev) => {
+            ev.stopPropagation();
             const sid = tr.dataset.studentId;
             const obj = changes.get(sid) || { status: null, extra: 0 };
             obj.extra = (obj.extra || 0) - 1;
@@ -152,7 +159,7 @@
         tdActions.appendChild(extraWrapper);
         tr.appendChild(tdActions);
 
-        // store debt for state updates (row coloring)
+        // store debt for state updates
         tr.__studentDebt = student.debt || 0;
 
         // initial row coloring
@@ -161,7 +168,7 @@
         return tr;
     }
 
-    // action button style: smaller, restored colors via CSS classes in template
+    // action button factory
     function makeActionBtn(name, cls, iconClass, status) {
         const b = document.createElement('button');
         b.type = 'button';
@@ -169,6 +176,7 @@
         b.dataset.status = status;
         b.title = name;
         b.innerHTML = `<i class="fa ${iconClass}"></i>`;
+        b.addEventListener('click', (e)=> e.stopPropagation());
         return b;
     }
 
@@ -195,7 +203,6 @@
         if (base === null) { remCell.textContent = '-'; return; }
         const resulting = base - delta;
         remCell.textContent = resulting;
-        // negative warning in status cell
         let warn = tr.querySelector('.negative-warning');
         if (!warn) {
             warn = document.createElement('span');
@@ -207,7 +214,6 @@
     }
 
     function updateRowState(tr) {
-        // color entire row according to debt/remaining thresholds (previous behavior)
         const sid = tr.dataset.studentId;
         const debt = Number(tr.__studentDebt || 0);
         const baseRaw = tr.dataset.baseRemaining;
@@ -216,7 +222,6 @@
         const delta = change ? (change.extra || 0) : 0;
         const resulting = base === null ? null : base - delta;
 
-        // remove previous state classes
         tr.classList.remove('row-debt','row-low','row-warn');
 
         if (debt && debt > 0) {
@@ -225,9 +230,9 @@
         }
         if (resulting !== null) {
             if (resulting < CRITICAL_THRESHOLD) {
-                tr.classList.add('row-low'); // critical
+                tr.classList.add('row-low');
             } else if (resulting < WARN_THRESHOLD) {
-                tr.classList.add('row-warn'); // warning
+                tr.classList.add('row-warn');
             }
         }
     }

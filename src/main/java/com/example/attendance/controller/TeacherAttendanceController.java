@@ -3,7 +3,6 @@ package com.example.attendance.controller;
 import com.example.attendance.entities.Attendance;
 import com.example.attendance.entities.Student;
 import com.example.attendance.entities.Teacher;
-import com.example.attendance.enums.AttendanceStatus;
 import com.example.attendance.service.AttendanceService;
 import com.example.attendance.service.StudentService;
 import com.example.attendance.service.TeacherService;
@@ -13,16 +12,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * TeacherAttendanceController — расширен новым batch endpoint'ом save_batch
+ * TeacherAttendanceController — исправлена обработка платежа (BigDecimal для debt)
  */
 @Controller
 @RequiredArgsConstructor
@@ -66,8 +65,7 @@ public class TeacherAttendanceController {
             m.put("lessonPackageTitle", s.getLessonPackage() != null ? s.getLessonPackage().getTitle() : null);
             m.put("remainingLessons", s.getRemainingLessons());
             m.put("needsBook", s.getNeedsBook());
-            // NEW: include debt so frontend can show debt badge
-            m.put("debt", s.getDebt() == null ? 0 : s.getDebt());
+            m.put("debt", s.getDebt() == null ? BigDecimal.ZERO : s.getDebt());
             Optional<Attendance> att = attendanceService.findByStudentAndDate(s.getId(), date);
             if (att.isPresent()) {
                 Attendance a = att.get();
@@ -84,113 +82,121 @@ public class TeacherAttendanceController {
     }
 
     /**
-     * Save attendance batch for a given date.
-     * Accepts JSON:
-     * {
-     *   "date":"YYYY-MM-DD",
-     *   "items":[ {"studentId":1, "status":"PRESENT", "extraLessons": 1}, ... ]
-     * }
-     *
-     * Behavior:
-     * - Validates date >= attendance.minDate (config)
-     * - Applies attendance statuses using AttendanceService.saveAttendancesForDate
-     * - Applies extraLessons by adjusting student.remainingLessons = remainingLessons - extraLessons
-     * - Returns JSON with applied results and warnings
+     * Return HTML fragment for student status drawer.
+     * GET /teacher/student_status/{id}?date=YYYY-MM-DD
      */
-    @PostMapping("/attendance/save_batch")
-    @ResponseBody
-    public ResponseEntity<?> saveAttendanceBatch(@RequestBody Map<String, Object> payload, Principal principal) {
-        // parse date
-        String dateStr = (String) payload.get("date");
-        LocalDate date;
-        try {
-            date = dateStr == null ? LocalDate.now() : LocalDate.parse(dateStr);
-        } catch (DateTimeParseException ex) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "invalid_date"));
-        }
-
-        // validate minDate from config
-        LocalDate minDate = LocalDate.parse(minDateStr);
-        if (date.isBefore(minDate)) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "date_too_early", "minDate", minDate.toString()));
-        }
+    @GetMapping("/student_status/{id}")
+    public String studentStatusFragment(@PathVariable("id") Long studentId,
+                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                        Principal principal,
+                                        Model model) {
+        if (date == null) date = LocalDate.now();
 
         var appUser = appUserService.findByUsernameSafe(principal.getName());
-        if (appUser == null) return ResponseEntity.status(403).body(Map.of("success", false, "error", "forbidden"));
-        // find teacher
-        var teacher = teacherService.findById(appUser.getId());
-        if (teacher == null) return ResponseEntity.status(403).body(Map.of("success", false, "error", "forbidden"));
-
-        // parse items
-        List<Map<String, Object>> items = (List<Map<String, Object>>) payload.get("items");
-        if (items == null) items = Collections.emptyList();
-
-        // Build map for statuses to pass into AttendanceService
-        Map<Long, AttendanceStatus> statusMap = new HashMap<>();
-        Map<Long, Integer> extraMap = new HashMap<>();
-        List<Map<String,Object>> perItemResults = new ArrayList<>();
-        for (var it : items) {
-            try {
-                Number sidN = (Number) it.get("studentId");
-                if (sidN == null) continue;
-                Long sid = sidN.longValue();
-                String st = (String) it.get("status");
-                Number extraN = (Number) it.get("extraLessons");
-                int extra = extraN == null ? 0 : extraN.intValue();
-
-                if (st != null) {
-                    try {
-                        statusMap.put(sid, AttendanceStatus.valueOf(st));
-                    } catch (Exception ex) {
-                        // ignore invalid status
-                    }
-                }
-                extraMap.put(sid, extra);
-
-                perItemResults.add(Map.of("studentId", sid, "requestedStatus", st, "extraLessons", extra));
-            } catch (Exception ex) {
-                // skip malformed item
-            }
+        if (appUser == null) {
+            model.addAttribute("errorMessage", "forbidden");
+            return "fragments/error_fragment :: error";
         }
 
-        // First: apply statuses (this will decrement/increment remainingLessons according to AttendanceService rules)
-        attendanceService.saveAttendancesForDate(appUser.getId(), date, statusMap);
-
-        // Next: apply extraLessons (subtract extraLessons from remainingLessons)
-        List<Map<String,Object>> applied = new ArrayList<>();
-        for (var e : extraMap.entrySet()) {
-            Long sid = e.getKey();
-            int extra = e.getValue();
-            Optional<Student> sOpt = studentService.findById(sid);
-            if (sOpt.isEmpty()) {
-                applied.add(Map.of("studentId", sid, "applied", false, "error", "student_not_found"));
-                continue;
-            }
-            Student s = sOpt.get();
-            // ownership check: the student's teacherId should equal current teacher.userId
-            Long teacherUserId = s.getTeacherId();
-            if (teacherUserId == null || !teacherUserId.equals(teacher.getUserId())) {
-                applied.add(Map.of("studentId", sid, "applied", false, "error", "not_your_student"));
-                continue;
-            }
-            Integer rem = s.getRemainingLessons();
-            if (rem == null) {
-                // not tracked
-                applied.add(Map.of("studentId", sid, "applied", false, "error", "remaining_not_tracked"));
-                continue;
-            }
-            int newRem = rem - extra; // per requirement: extra decreases remaining
-            s.setRemainingLessons(newRem); // allow negative
-            s.setUpdatedAt(java.time.Instant.now());
-            studentService.updateStudent(s);
-            applied.add(Map.of("studentId", sid, "applied", true, "newRemaining", newRem));
+        Teacher teacher = teacherService.findById(appUser.getId());
+        if (teacher == null) {
+            model.addAttribute("errorMessage", "forbidden");
+            return "fragments/error_fragment :: error";
         }
 
-        Map<String,Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("applied", applied);
-        return ResponseEntity.ok(result);
+        Optional<Student> sOpt = studentService.findById(studentId);
+        if (sOpt.isEmpty()) {
+            model.addAttribute("errorMessage", "Студент не найден");
+            return "fragments/error_fragment :: error";
+        }
+        Student s = sOpt.get();
+
+        // ensure teacher owns student (security)
+        if (s.getTeacherId() == null || !s.getTeacherId().equals(teacher.getUserId())) {
+            model.addAttribute("errorMessage", "У вас нет доступа к этому студенту");
+            return "fragments/error_fragment :: error";
+        }
+
+        model.addAttribute("student", s);
+        model.addAttribute("date", date);
+
+        Optional<Attendance> att = attendanceService.findByStudentAndDate(studentId, date);
+        model.addAttribute("attendance", att.orElse(null));
+
+        // For now, no history — leave empty list to avoid missing methods
+        model.addAttribute("recentAttendance", Collections.emptyList());
+
+        return "teacher/student_status_fragment";
     }
 
-    // existing methods (attendanceJson & consume endpoint) can remain as before...
+    /**
+     * POST /teacher/student/{id}/payment
+     * Body JSON: { "amount": 500, "note": "Оплата за урок" }
+     *
+     * Handles BigDecimal debt on Student.
+     */
+    @PostMapping("/student/{id}/payment")
+    @ResponseBody
+    public ResponseEntity<?> postStudentPayment(@PathVariable("id") Long studentId,
+                                                @RequestBody Map<String, Object> payload,
+                                                Principal principal) {
+        try {
+            var appUser = appUserService.findByUsernameSafe(principal.getName());
+            if (appUser == null) return ResponseEntity.status(403).body(Map.of("success", false, "error", "forbidden"));
+
+            Teacher teacher = teacherService.findById(appUser.getId());
+            if (teacher == null) return ResponseEntity.status(403).body(Map.of("success", false, "error", "forbidden"));
+
+            Optional<Student> sOpt = studentService.findById(studentId);
+            if (sOpt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("success", false, "error", "student_not_found"));
+
+            Student s = sOpt.get();
+            // ownership check
+            if (s.getTeacherId() == null || !s.getTeacherId().equals(teacher.getUserId())) {
+                return ResponseEntity.status(403).body(Map.of("success", false, "error", "not_your_student"));
+            }
+
+            // parse amount into BigDecimal
+            BigDecimal amount = parseBigDecimalFromObject(payload.get("amount"));
+            if (amount == null) amount = BigDecimal.ZERO;
+
+            String note = payload.get("note") == null ? "" : payload.get("note").toString();
+
+            // current debt (BigDecimal)
+            BigDecimal currentDebt = s.getDebt() == null ? BigDecimal.ZERO : s.getDebt();
+            BigDecimal newDebt = currentDebt.subtract(amount);
+
+            s.setDebt(newDebt);
+            s.setUpdatedAt(java.time.Instant.now());
+            studentService.updateStudent(s);
+
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("success", true);
+            resp.put("newDebt", newDebt);
+            resp.put("studentId", studentId);
+            resp.put("appliedAmount", amount);
+            resp.put("note", note);
+            return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", "server_error", "message", ex.getMessage()));
+        }
+    }
+
+    /* ---------- helpers ---------- */
+
+    private BigDecimal parseBigDecimalFromObject(Object o) {
+        if (o == null) return null;
+        try {
+            if (o instanceof BigDecimal) return (BigDecimal) o;
+            if (o instanceof Number) {
+                // for Integer/Long/Double/etc.
+                return BigDecimal.valueOf(((Number) o).doubleValue());
+            }
+            String s = o.toString().trim();
+            if (s.isEmpty()) return null;
+            return new BigDecimal(s);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }
