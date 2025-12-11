@@ -74,6 +74,13 @@ public class ManagerController {
      * Create teacher: check username first, create AppUser, then Teacher.
      * If Teacher creation fails after AppUser created — rollback AppUser to avoid orphans.
      */
+    @GetMapping("/add_teacher")
+    public String addTeacherForm(Model model) {
+        // Если нужно, можно передать какие-то данные в форму (например default shift)
+        model.addAttribute("shifts", com.example.attendance.enums.Shift.values());
+        return "manager/add_teacher";
+    }
+
     @PostMapping("/add_teacher")
     public String addTeacher(@RequestParam String firstName,
                              @RequestParam String lastName,
