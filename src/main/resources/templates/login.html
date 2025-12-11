@@ -4,501 +4,116 @@
     <meta charset="UTF-8"/>
     <title>Login</title>
     <style>
-        /* СТИЛИ ДЛЯ СТРАНИЦЫ ЛОГИНА */
+        /* Simplified fixed background and styles (no theme toggle) */
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* fixed blue gradient background that doesn't change when scrolling */
+            background: linear-gradient(135deg, #306dd3 0%, #1042ad 100%);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            /* ensure background remains fixed during scroll */
+            background-attachment: fixed;
         }
 
-        .login-container {
-            width: 100%;
-            max-width: 420px;
-        }
+        .login-container { width: 100%; max-width: 420px; }
 
         .login-card {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
             border-radius: 24px;
             padding: 45px 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
         }
 
-        .login-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg,
-            transparent 30%,
-            rgba(255, 255, 255, 0.1) 50%,
-            transparent 70%);
-            animation: shine 8s infinite linear;
+        .logo { text-align: center; margin-bottom: 25px; }
+        .logo-icon { font-size: 3rem; display: block; margin-bottom:10px; }
+        .logo h1 { color:#1f2937; font-size:1.6rem; font-weight:700; }
+        .logo p { color:#4b5563; margin-top:4px; }
+
+        h2 { text-align:center; color:#1f2937; font-size:1.4rem; margin-bottom:20px; font-weight:600; }
+
+        .alert { padding:12px 16px; border-radius:10px; margin-bottom:18px; font-weight:500; display:flex; gap:10px; align-items:center; }
+        .alert-error { background:#fee2e2; color:#991b1b; border-left:4px solid #ef4444; }
+        .alert-success { background:#d1fae5; color:#065f46; border-left:4px solid #10b981; }
+
+        form { display:flex; flex-direction:column; gap:18px; }
+
+        label { display:block; margin-bottom:6px; font-weight:600; color:#374151; font-size:0.95rem; }
+        .input-wrapper { position:relative; }
+
+        input[type="text"], input[type="password"] {
+            width:100%; padding:14px 16px; border:2px solid #e6eefc; border-radius:10px; font-size:1rem; background:#f8fafc;
+            color:#0f172a;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline:none; border-color:#2563eb; box-shadow:0 0 0 6px rgba(37,99,235,0.08); background:white;
         }
 
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-        }
-
-        .logo {
-            text-align: center;
-            margin-bottom: 35px;
-        }
-
-        .logo-icon {
-            font-size: 3.5rem;
-            margin-bottom: 15px;
-            display: block;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .logo h1 {
-            color: #4a5568;
-            font-size: 1.8rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .logo p {
-            color: #718096;
-            font-size: 0.95rem;
-            margin-top: 5px;
-        }
-
-        h2 {
-            text-align: center;
-            color: #2d3748;
-            font-size: 1.8rem;
-            margin-bottom: 30px;
-            font-weight: 600;
-        }
-
-        /* Сообщения об ошибках/успехе */
-        .alert {
-            padding: 15px 20px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideDown 0.5s ease;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .alert-error {
-            background: #fed7d7;
-            color: #9b2c2c;
-            border-left: 5px solid #e53e3e;
-        }
-
-        .alert-success {
-            background: #c6f6d5;
-            color: #276749;
-            border-left: 5px solid #38a169;
-        }
-
-        .alert-icon {
-            font-size: 1.3rem;
-        }
-
-        /* Форма */
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-
-        .form-group {
-            position: relative;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 0.95rem;
-            padding-left: 5px;
-        }
-
-        .input-wrapper {
-            position: relative;
-        }
-
-        input[type="text"],
-        input[type="password"] {
-            width: 100%;
-            padding: 18px 20px 18px 50px;
-            border: 2px solid #e2e8f0;
-            border-radius: 14px;
-            font-size: 1rem;
-            background: #f8fafc;
-            transition: all 0.3s ease;
-            color: #2d3748;
-        }
-
-        input[type="text"]:focus,
-        input[type="password"]:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.2rem;
-            color: #a0aec0;
-            transition: color 0.3s;
-        }
-
-        input:focus + .input-icon {
-            color: #667eea;
-        }
-
-        .username-icon::before {
-            content: "👤";
-        }
-
-        .password-icon::before {
-            content: "🔒";
-        }
-
-        /* Кнопка входа */
         .login-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 18px;
-            border-radius: 14px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            position: relative;
-            overflow: hidden;
+            background: linear-gradient(90deg, #2563eb, #1e40af);
+            color:white; border:none; padding:14px; border-radius:12px; font-size:1.05rem; font-weight:600; cursor:pointer;
         }
 
-        .login-btn::before {
-            content: '→';
-            font-size: 1.3rem;
-            transition: transform 0.3s;
-        }
+        .login-footer { text-align:center; margin-top:18px; color:#4b5563; font-size:0.9rem; }
 
-        .login-btn:hover {
-            background: linear-gradient(135deg, #5a67d8, #6b46c1);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .login-btn:hover::before {
-            transform: translateX(5px);
-        }
-
-        .login-btn:active {
-            transform: translateY(-1px);
-        }
-
-        .login-btn::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg,
-            transparent 30%,
-            rgba(255, 255, 255, 0.2) 50%,
-            transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .login-btn:hover::after {
-            opacity: 1;
-            animation: shine 2s infinite linear;
-        }
-
-        /* Дополнительные ссылки */
-        .login-footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-            color: #718096;
-            font-size: 0.9rem;
-        }
-
-        .forgot-link {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .forgot-link:hover {
-            color: #5a67d8;
-            text-decoration: underline;
-        }
-
-        /* Декоративные элементы */
-        .decorations {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .decoration {
-            position: absolute;
-            border-radius: 50%;
-            opacity: 0.1;
-        }
-
-        .decoration-1 {
-            width: 300px;
-            height: 300px;
-            background: #667eea;
-            top: -150px;
-            right: -150px;
-        }
-
-        .decoration-2 {
-            width: 200px;
-            height: 200px;
-            background: #764ba2;
-            bottom: -100px;
-            left: -100px;
-        }
-
-        /* Адаптивность */
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 35px 25px;
-            }
-
-            .logo h1 {
-                font-size: 1.5rem;
-            }
-
-            h2 {
-                font-size: 1.5rem;
-            }
-
-            input[type="text"],
-            input[type="password"] {
-                padding: 16px 16px 16px 45px;
-            }
-
-            .input-icon {
-                left: 16px;
-            }
-        }
-
-        /* Эффект входа для всего контейнера */
-        .login-container {
-            animation: fadeIn 0.8s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Тема системы */
-        .theme-toggle {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: white;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s;
-        }
-
-        .theme-toggle:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: rotate(30deg);
+        @media (max-width:480px) {
+            .login-card { padding:30px 20px; }
+            .logo-icon { font-size:2.6rem; }
         }
     </style>
 </head>
 <body>
-<!-- Декоративные элементы фона -->
-<div class="decorations">
-    <div class="decoration decoration-1"></div>
-    <div class="decoration decoration-2"></div>
-</div>
-
-<!-- Кнопка темы (опционально) -->
-<button class="theme-toggle" onclick="toggleTheme()">🌓</button>
-
 <div class="login-container">
     <div class="login-card">
-        <!-- Логотип -->
         <div class="logo">
             <span class="logo-icon">🎓</span>
-            <h1>Attendance System</h1>
-            <p>Manage students and teachers efficiently</p>
+            <h1>Система посещаемости</h1>
         </div>
 
-        <h2>Please Sign In</h2>
+        <h2>Пожалуйста войдите в систему</h2>
 
-        <!-- Сообщения об ошибках -->
-        <div th:if="${param.error}" class="alert alert-error">
-            <span class="alert-icon">⚠️</span>
-            <span>Invalid username or password</span>
+        <div th:if="${param.error}" class="alert alert-error" role="alert" aria-live="polite">
+            <span>⚠️</span>
+            <span>Неправильный логин или пароль</span>
         </div>
 
-        <!-- Сообщения об успешном выходе -->
-        <div th:if="${param.logout}" class="alert alert-success">
-            <span class="alert-icon">✅</span>
-            <span>You have been logged out successfully</span>
+        <div th:if="${param.logout}" class="alert alert-success" role="status" aria-live="polite">
+            <span>✅</span>
+            <span>Вы вышли с системы</span>
         </div>
 
-        <!-- Форма входа -->
-        <form th:action="@{/login}" method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+        <!-- Use static action to avoid session creation during template parsing -->
+        <form action="/login" method="post">
+            <!-- Insert CSRF hidden input only when token is available to avoid session creation during parsing -->
+            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
 
-            <div class="form-group">
-                <label for="username">Username</label>
+            <div>
+                <label for="username">Логин</label>
                 <div class="input-wrapper">
-                    <input type="text" id="username" name="username" autofocus="autofocus"
-                           placeholder="Enter your username"/>
-                    <span class="input-icon username-icon"></span>
+                    <input type="text" id="username" name="username" autofocus placeholder="Введите свой логин" />
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="password">Password</label>
+            <div>
+                <label for="password">Пароль</label>
                 <div class="input-wrapper">
-                    <input type="password" id="password" name="password"
-                           placeholder="Enter your password"/>
-                    <span class="input-icon password-icon"></span>
+                    <input type="password" id="password" name="password" placeholder="Введите свой пароль" />
                 </div>
             </div>
 
-            <button class="login-btn" type="submit">
-                Sign In
-            </button>
+            <button class="login-btn" type="submit">Войти</button>
         </form>
 
-        <!-- Футер -->
         <div class="login-footer">
-            <p>Need help? <a href="#" class="forgot-link">Contact administrator</a></p>
+            <p>Нужна помощь? <a href="#" style="color:#2563eb; text-decoration:none">Свяжитесь с администратором</a></p>
         </div>
     </div>
 </div>
-
-<script>
-    // Простая функция для переключения темы
-    function toggleTheme() {
-        document.body.classList.toggle('dark-theme');
-        localStorage.setItem('theme',
-            document.body.classList.contains('dark-theme') ? 'dark' : 'light'
-        );
-    }
-
-    // Проверка сохраненной темы
-    if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark-theme');
-    }
-
-    // Добавляем стили для темной темы
-    const style = document.createElement('style');
-    style.textContent = `
-            body.dark-theme {
-                background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-            }
-            body.dark-theme .login-card {
-                background: rgba(45, 55, 72, 0.95);
-                color: #e2e8f0;
-                border-color: rgba(255, 255, 255, 0.1);
-            }
-            body.dark-theme .logo h1,
-            body.dark-theme h2,
-            body.dark-theme label,
-            body.dark-theme .login-footer {
-                color: #e2e8f0;
-            }
-            body.dark-theme .logo p {
-                color: #a0aec0;
-            }
-            body.dark-theme input {
-                background: #2d3748;
-                border-color: #4a5568;
-                color: #e2e8f0;
-            }
-            body.dark-theme input:focus {
-                border-color: #667eea;
-                background: #1a202c;
-            }
-            body.dark-theme .input-icon {
-                color: #718096;
-            }
-            body.dark-theme .login-footer {
-                border-color: #4a5568;
-            }
-        `;
-    document.head.appendChild(style);
-</script>
 </body>
 </html>

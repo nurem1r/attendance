@@ -9,6 +9,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 @Configuration
 public class SecurityConfig {
@@ -38,10 +40,6 @@ public class SecurityConfig {
         };
     }
 
-    /**
-     * Create DaoAuthenticationProvider and let Spring inject AppUserService and passwordEncoder as method parameters.
-     * Using method parameters avoids constructor-level circular dependency between SecurityConfig and AppUserService.
-     */
     @Bean
     public DaoAuthenticationProvider authProvider(AppUserService appUserService, BCryptPasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(appUserService);
@@ -50,9 +48,18 @@ public class SecurityConfig {
     }
 
     @Bean
+    public LogoutSuccessHandler logoutSuccessHandler() {
+        return new CustomLogoutSuccessHandler("/login");
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, DaoAuthenticationProvider authProvider) throws Exception {
         http
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
+                // Используем cookie-based CSRF token repository — он не требует создания сервлетной сессии при выдаче токена
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers("/h2-console/**")
+                )
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**", "/h2-console/**", "/login").permitAll()
@@ -66,7 +73,14 @@ public class SecurityConfig {
                         .permitAll()
                         .successHandler(successHandler())
                 )
-                .logout(Customizer.withDefaults())
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessHandler(logoutSuccessHandler())
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll()
+                )
                 .authenticationProvider(authProvider);
 
         return http.build();
