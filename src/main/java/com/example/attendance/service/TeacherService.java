@@ -54,12 +54,16 @@ public class TeacherService {
                 .user(managedUser)
                 .build();
 
+        // Логируем для диагностики
+        log.info("createTeacherForUserById: preparing to persist Teacher. managedUser.id={}, teacher.user={}, teacher.userId(before)={}",
+                managedUser.getId(),
+                t.getUser() != null ? "present" : "null",
+                t.getUserId());
 
-        // Не устанавливаем t.setUserId(...) вручную — @MapsId позаботится об этом при persist.
-        // Используем EntityManager.persist чтобы Hibernate выполнял INSERT для новой сущности.
         entityManager.persist(t);
         entityManager.flush(); // force INSERT now to catch errors immediately
 
+        log.info("createTeacherForUserById: persisted Teacher. teacher.userId(after)={}, teacher object={}", t.getUserId(), t);
 
         // Создаём таймслоты, если нужно
         if (t.getUserId() != null) {
@@ -125,5 +129,33 @@ public class TeacherService {
 
     public List<Teacher> findAll() {
         return teacherRepository.findAll();
+    }
+
+    /**
+     * Update teacher (partial/full) and save.
+     */
+    @Transactional
+    public Teacher updateTeacher(Teacher t) {
+        if (t == null || t.getUserId() == null) {
+            throw new IllegalArgumentException("Teacher or teacher.userId is null");
+        }
+        // ensure managed instance
+        Teacher managed = teacherRepository.findById(t.getUserId()).orElseThrow(() -> new IllegalArgumentException("Teacher not found: " + t.getUserId()));
+        managed.setFirstName(t.getFirstName());
+        managed.setLastName(t.getLastName());
+        managed.setPhone(t.getPhone());
+        managed.setShift(t.getShift());
+        // updatedAt field if any could be set here
+        return teacherRepository.save(managed);
+    }
+
+    /**
+     * Delete teacher by userId (shared PK). Does not delete AppUser.
+     */
+    @Transactional
+    public void deleteById(Long userId) {
+        if (userId == null) return;
+        teacherRepository.deleteById(userId);
+        log.info("Deleted Teacher with userId={}", userId);
     }
 }

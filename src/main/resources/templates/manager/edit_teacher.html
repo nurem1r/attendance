@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Редактировать учителя</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+</head>
+<body>
+<div class="container">
+    <div class="header-row">
+        <div class="header-left">
+            <h1>Редактировать учителя</h1>
+            <div class="small">Измените данные учителя</div>
+        </div>
+        <div class="header-actions">
+            <a th:href="@{/manager/teacher_list}" class="btn-consume">Назад</a>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <form th:action="@{/manager/edit_teacher}" method="post" id="editTeacherForm">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+            <input type="hidden" name="id" th:value="${teacher.userId}" />
+
+            <div class="form-row">
+                <label>
+                    Фамилия
+                    <input class="input" type="text" name="lastName" th:value="${teacher.lastName}" required />
+                </label>
+                <label>
+                    Имя
+                    <input class="input" type="text" name="firstName" th:value="${teacher.firstName}" required />
+                </label>
+            </div>
+
+            <div class="form-row" style="margin-top:8px">
+                <label>
+                    Телефон
+                    <input class="input" type="text" name="phone" th:value="${teacher.phone}" />
+                </label>
+
+                <label>
+                    Смена
+                    <select class="input" name="shift">
+                        <option value="">-- выбрать --</option>
+                        <option value="FIRST" th:selected="${teacher.shift != null and teacher.shift.name() == 'FIRST'}">ПЕРВАЯ</option>
+                        <option value="SECOND" th:selected="${teacher.shift != null and teacher.shift.name() == 'SECOND'}">ВТОРАЯ</option>
+                    </select>
+                </label>
+            </div>
+
+            <div style="margin-top:12px">
+                <button class="btn-consume" type="submit">Сохранить</button>
+                <a th:href="@{/manager/teacher_list}" style="margin-left:8px" class="btn-consume">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

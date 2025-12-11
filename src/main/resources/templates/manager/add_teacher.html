@@ -13,10 +13,7 @@
             <div class="small">Создать профиль учителя и учётную запись</div>
         </div>
         <div class="header-actions">
-            <form th:action="@{/logout}" method="post" th:object="${_csrf}">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                <button type="submit" class="btn-consume">Выйти</button>
-            </form>
+            <a th:href="@{/manager}" class="btn-consume">Назад</a>
         </div>
     </div>
 

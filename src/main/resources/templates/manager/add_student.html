@@ -13,10 +13,7 @@
       <div class="small">Заполните данные студента</div>
     </div>
     <div class="header-actions">
-      <form th:action="@{/logout}" method="post" th:object="${_csrf}">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <button type="submit" class="btn-consume">Выйти</button>
-      </form>
+      <a th:href="@{/manager}" class="btn-consume">Назад</a>
     </div>
   </div>
 
@@ -64,7 +61,6 @@
         </label>
       </div>
 
-      <!-- Новый блок: выбор time slot -->
       <div class="form-row" style="margin-top:8px">
         <label style="flex:1">
           Временной слот
@@ -90,7 +86,6 @@
     const teacherSelect = document.getElementById('teacherSelect');
     const timeSlotSelect = document.getElementById('timeSlotSelect');
 
-    // Заполняет select опциями [{id,label}]
     function fillTimeSlots(slots){
       timeSlotSelect.innerHTML = '';
       const emptyOpt = document.createElement('option');
@@ -112,7 +107,6 @@
       });
     }
 
-    // Запрос слотов для выбранного teacherId
     function loadSlotsForTeacher(teacherId){
       if(!teacherId){
         timeSlotSelect.innerHTML = '<option value=\"\">-- выберите учителя сначала --</option>';
@@ -132,12 +126,10 @@
               });
     }
 
-    // При изменении выбора учителя загружаем слоты
     teacherSelect?.addEventListener('change', function(){
       loadSlotsForTeacher(this.value);
     });
 
-    // Если на загрузке странице уже выбран учитель (например single teacher), загрузим слоты
     document.addEventListener('DOMContentLoaded', function(){
       const initialTeacher = teacherSelect ? teacherSelect.value : '';
       if(initialTeacher) loadSlotsForTeacher(initialTeacher);

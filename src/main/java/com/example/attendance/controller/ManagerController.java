@@ -184,8 +184,27 @@ public class ManagerController {
 
     @GetMapping("/teacher_list")
     public String teacherList(Model model) {
+        // load teachers
         List<Teacher> teachers = teacherService.findAll();
+
+        // build students count map keyed by teacher.userId (safe against null ids)
+        Map<Long, Long> studentsCountMap = new HashMap<>();
+        for (Teacher t : teachers) {
+            Long tid = t.getUserId();
+            if (tid != null) {
+                try {
+                    long cnt = studentService.countByTeacherId(tid);
+                    studentsCountMap.put(tid, cnt);
+                } catch (Exception ex) {
+                    // in case of repository error, log and default to 0
+                    log.warn("Failed to count students for teacherId={}", tid, ex);
+                    studentsCountMap.put(tid, 0L);
+                }
+            }
+        }
+
         model.addAttribute("teachers", teachers);
+        model.addAttribute("studentsCountMap", studentsCountMap);
         return "manager/teacher_list";
     }
 
@@ -304,4 +323,63 @@ public class ManagerController {
     }
 
     /* ----------------------------------------------------------------------- */
+
+    // Добавьте/замените следующие методы в классе ManagerController
+
+    @GetMapping("/edit_teacher/{id}")
+    public String editTeacherForm(@PathVariable Long id, Model model) {
+        if (id == null) {
+            return "redirect:/manager/teacher_list?error=bad_request";
+        }
+        Teacher t = teacherService.findById(id);
+        if (t == null) {
+            return "redirect:/manager/teacher_list?error=not_found";
+        }
+        model.addAttribute("teacher", t);
+        return "manager/edit_teacher";
+    }
+
+    @PostMapping("/edit_teacher")
+    public String updateTeacher(@RequestParam Long id,
+                                @RequestParam String firstName,
+                                @RequestParam String lastName,
+                                @RequestParam(required = false) String phone,
+                                @RequestParam(required = false) com.example.attendance.enums.Shift shift) {
+        if (id == null) {
+            return "redirect:/manager/teacher_list?error=bad_request";
+        }
+        Teacher t = teacherService.findById(id);
+        if (t == null) {
+            return "redirect:/manager/teacher_list?error=not_found";
+        }
+
+        try {
+            t.setFirstName(firstName != null ? firstName.trim() : null);
+            t.setLastName(lastName != null ? lastName.trim() : null);
+            t.setPhone(phone);
+            t.setShift(shift);
+            teacherService.updateTeacher(t);
+        } catch (Exception ex) {
+            log.error("Failed to update teacher id={}", id, ex);
+            return "redirect:/manager/teacher_list?error=update_failed";
+        }
+
+        return "redirect:/manager/teacher_list?success=updated";
+    }
+
+    @PostMapping("/delete_teacher")
+    public String deleteTeacher(@RequestParam Long teacherUserId) {
+        if (teacherUserId == null) {
+            return "redirect:/manager/teacher_list?error=bad_request";
+        }
+        try {
+            teacherService.deleteById(teacherUserId);
+            appUserService.deleteById(teacherUserId);
+            log.info("Deleted teacher and user with id={}", teacherUserId);
+        } catch (Exception ex) {
+            log.error("Failed to delete teacher userId={}", teacherUserId, ex);
+            return "redirect:/manager/teacher_list?error=delete_failed";
+        }
+        return "redirect:/manager/teacher_list?success=deleted";
+    }
 }
