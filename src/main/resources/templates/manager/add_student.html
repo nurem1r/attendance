@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <title>Добавить студента</title>
   <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+  <style>
+    .hidden { display:none; }
+  </style>
 </head>
 <body>
 <div class="container">
@@ -51,32 +54,37 @@
           Пакет
           <select class="input" name="packageId" id="packageSelect" required>
             <option value="">-- выберите пакет --</option>
-            <option th:each="p : ${packages}" th:value="${p.id}" th:text="${p.title + ' — ' + p.price + ' сом'}">12 lessons</option>
+            <option th:each="p : ${packages}" th:value="${p.id}" th:text="${p.title + ' — ' + p.price + ' сом'}" th:attr="data-price=${p.price}">12 lessons</option>
           </select>
         </label>
 
         <label>
-          Первичный платёж (сом)
-          <input class="input" type="number" step="0.01" name="initialPayment" value="0" />
+          Платёж (сом)
+          <input class="input" id="initialPayment" name="initialPayment" type="number" step="0.01" placeholder="" />
         </label>
       </div>
 
       <div class="form-row" style="margin-top:8px">
         <label style="flex:1">
-          Временной слот
+          Время
           <select class="input" name="timeSlotId" id="timeSlotSelect">
             <option value="">-- выберите учителя сначала --</option>
           </select>
         </label>
 
-        <!-- Новое поле: Наличие книги -->
-        <label style="width:160px; align-self:flex-end; margin-left:12px;">
+        <label style="width:160px; align-self:flex-end;">
           Книга
           <select class="input" name="book">
-            <option value="">Не указано</option>
             <option value="true">Да</option>
             <option value="false" selected>Нет</option>
           </select>
+        </label>
+      </div>
+
+      <div class="form-row" id="paymentNoteRow" style="margin-top:12px; display:none;">
+        <label style="flex:1">
+          Заметка по оплате
+          <input class="input" id="paymentNote" name="paymentNote" type="text" maxlength="512" placeholder="Дата, комментарий..." />
         </label>
       </div>
 
@@ -92,6 +100,9 @@
   (function(){
     const teacherSelect = document.getElementById('teacherSelect');
     const timeSlotSelect = document.getElementById('timeSlotSelect');
+    const packageSelect = document.getElementById('packageSelect');
+    const initialPayment = document.getElementById('initialPayment');
+    const paymentNoteRow = document.getElementById('paymentNoteRow');
 
     function fillTimeSlots(slots){
       timeSlotSelect.innerHTML = '';
@@ -133,13 +144,28 @@
               });
     }
 
+    function onInitialPaymentChange() {
+      const val = (initialPayment.value || '').toString().trim();
+      const num = parseFloat(val);
+      const hasPayment = val !== '' && !isNaN(num) && num > 0 || (val !== '' && isNaN(num) === true ? true : false);
+      paymentNoteRow.style.display = hasPayment ? 'flex' : 'none';
+    }
+
     teacherSelect?.addEventListener('change', function(){
       loadSlotsForTeacher(this.value);
     });
 
+    packageSelect?.addEventListener('change', function(){
+      onInitialPaymentChange();
+    });
+
+    initialPayment?.addEventListener('input', onInitialPaymentChange);
+
     document.addEventListener('DOMContentLoaded', function(){
       const initialTeacher = teacherSelect ? teacherSelect.value : '';
       if(initialTeacher) loadSlotsForTeacher(initialTeacher);
+
+      onInitialPaymentChange();
     });
   })();
 </script>

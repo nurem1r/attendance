@@ -7,13 +7,6 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/**
- * Student entity adapted to reference LessonPackage.
- * - Uses Lombok for boilerplate reduction.
- * - Keeps teacherId as a simple Long (matches existing code that used s.teacherId).
- * - Stores package reference (many-to-one) and a captured packagePrice at time of assignment.
- * - Stores debt, remainingLessons and some audit timestamps.
- */
 @Entity
 @Table(name = "students", indexes = {
         @Index(name = "idx_student_teacher", columnList = "teacher_id"),
@@ -68,13 +61,17 @@ public class Student implements Serializable {
     @Column(name = "remaining_lessons")
     private Integer remainingLessons;
 
-    // outstanding debt (packagePrice - payments)
+    // outstanding debt (packagePrice - payments) — we will maintain this server-side
     @Column(name = "debt", precision = 10, scale = 2)
     private BigDecimal debt;
 
     // simple flag if student needs a book
     @Column(name = "needs_book")
     private Boolean needsBook = false;
+
+    // note for initial payment / payment comment
+    @Column(name = "payment_note", length = 512)
+    private String paymentNote;
 
     // audit
     @Column(name = "created_at", nullable = false, updatable = false)

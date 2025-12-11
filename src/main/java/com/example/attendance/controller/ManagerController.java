@@ -148,21 +148,19 @@ public class ManagerController {
     public String addStudent(@RequestParam String firstName,
                              @RequestParam String lastName,
                              @RequestParam(required = false) String phone,
-                             // try to accept packageId (preferred). Keep PackageType for backward compatibility.
                              @RequestParam(required = false) Long packageId,
                              @RequestParam(required = false) PackageType packageType,
                              @RequestParam Long teacherId,
                              @RequestParam(required = false) Long timeSlotId,
                              @RequestParam(required = false) Boolean book,
                              @RequestParam(required = false) BigDecimal initialPayment,
-                             @RequestParam(required = false) BigDecimal debt) {
+                             @RequestParam(required = false) BigDecimal debt,
+                             @RequestParam(required = false) String paymentNote) {
 
-        // Prefer packageId (new flow). Fall back to enum-based flow for compatibility.
         if (packageId != null) {
-            studentService.createStudentWithPackage(firstName, lastName, phone, packageId, teacherId, timeSlotId, book, initialPayment);
+            studentService.createStudentWithPackage(firstName, lastName, phone, packageId, teacherId, timeSlotId, book, initialPayment, paymentNote);
         } else {
-            // legacy: manager passes enum PackageType; pass through to existing service method
-            studentService.createStudent(firstName, lastName, phone, packageType, teacherId, timeSlotId, book, debt);
+            studentService.createStudent(firstName, lastName, phone, packageType, teacherId, timeSlotId, book, debt, paymentNote);
         }
         return "redirect:/manager/student_list";
     }
@@ -273,12 +271,10 @@ public class ManagerController {
         Student s = sOpt.get();
         model.addAttribute("student", s);
 
-        // packages and teachers for selects
         List<LessonPackage> packages = lessonPackageRepository.findAll();
         model.addAttribute("packages", packages);
         model.addAttribute("teachers", teacherService.findAll());
 
-        // load timeslots for selected teacher (if any)
         Long teacherId = s.getTeacherId();
         List<TimeSlot> slots = teacherId == null ? List.of() : timeSlotService.findByTeacherId(teacherId);
         model.addAttribute("slots", slots);
@@ -296,7 +292,7 @@ public class ManagerController {
                                 @RequestParam(required = false) Long timeSlotId,
                                 @RequestParam(required = false) Boolean book,
                                 @RequestParam(required = false) BigDecimal initialPayment,
-                                @RequestParam(required = false) BigDecimal debt) {
+                                @RequestParam(required = false) String paymentNote) {
         Optional<Student> sOpt = studentService.findById(id);
         if (sOpt.isEmpty()) {
             return "redirect:/manager/student_list?error=not_found";
@@ -312,23 +308,42 @@ public class ManagerController {
         // set timeSlotId (Student has field timeSlotId)
         s.setTimeSlotId(timeSlotId);
 
+        // previous debt preserved
+        BigDecimal previousDebt = s.getDebt() == null ? BigDecimal.ZERO : s.getDebt();
+
         if (packageId != null) {
             LessonPackage pkg = lessonPackageRepository.findById(packageId).orElse(null);
             if (pkg != null) {
-                s.assignPackage(pkg);
-                if (pkg.getLessonsCount() != null) {
-                    s.setRemainingLessons(pkg.getLessonsCount());
+                // determine if package actually changed
+                Long currentPkgId = s.getLessonPackage() != null ? s.getLessonPackage().getId() : null;
+                boolean changed = (currentPkgId == null && packageId != null) || (currentPkgId != null && !currentPkgId.equals(packageId));
+
+                if (changed) {
+                    // assign new package and remaining lessons
+                    s.assignPackage(pkg);
+                    if (pkg.getLessonsCount() != null) {
+                        s.setRemainingLessons(pkg.getLessonsCount());
+                    }
+
+                    BigDecimal paid = initialPayment == null ? BigDecimal.ZERO : initialPayment;
+                    BigDecimal packagePrice = pkg.getPrice() == null ? BigDecimal.ZERO : pkg.getPrice();
+                    BigDecimal newPackageDebt = packagePrice.subtract(paid);
+                    if (newPackageDebt.compareTo(BigDecimal.ZERO) < 0) newPackageDebt = BigDecimal.ZERO;
+
+                    // sum with previous debt
+                    BigDecimal resultingDebt = previousDebt.add(newPackageDebt);
+                    s.setDebt(resultingDebt);
+
+                    // save payment note if provided (only relevant when payment flow happened)
+                    if (paymentNote != null && !paymentNote.isBlank()) {
+                        s.setPaymentNote(paymentNote.trim());
+                    }
+                } else {
+                    // same package selected: do not change debt, leave paymentNote unchanged
                 }
-                BigDecimal paid = initialPayment == null ? BigDecimal.ZERO : initialPayment;
-                BigDecimal newDebt = pkg.getPrice() == null ? BigDecimal.ZERO : pkg.getPrice().subtract(paid);
-                if (newDebt.compareTo(BigDecimal.ZERO) < 0) newDebt = BigDecimal.ZERO;
-                s.setDebt(newDebt);
             }
         } else {
-            // no package change — if explicit debt provided, set it
-            if (debt != null) {
-                s.setDebt(debt);
-            }
+            // no package change: do not change debt (manual debt editing removed)
         }
 
         studentService.updateStudent(s);

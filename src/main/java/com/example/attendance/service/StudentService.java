@@ -17,10 +17,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * StudentService — единая реализация (без отдельного интерфейса),
- * реализует функции, используемые в ManagerController and controllers.
- */
 @Service
 @RequiredArgsConstructor
 public class StudentService {
@@ -30,10 +26,6 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final LessonPackageRepository lessonPackageRepository;
 
-    /**
-     * Legacy createStudent using enum packageType (kept for backward compatibility).
-     * Existing implementation remains.
-     */
     @Transactional
     public Student createStudent(String firstName,
                                  String lastName,
@@ -42,7 +34,8 @@ public class StudentService {
                                  Long teacherId,
                                  Long timeSlotId,
                                  Boolean book,
-                                 BigDecimal debtParam) {
+                                 BigDecimal debtParam,
+                                 String paymentNote) {
         if (firstName == null || lastName == null) {
             throw new IllegalArgumentException("firstName/lastName required");
         }
@@ -57,7 +50,6 @@ public class StudentService {
                 .updatedAt(Instant.now())
                 .build();
 
-        // Assign timeSlotId if Student has such field (best-effort)
         try {
             s.getClass().getMethod("setTimeSlotId", Long.class).invoke(s, timeSlotId);
         } catch (NoSuchMethodException ignored) {
@@ -65,32 +57,34 @@ public class StudentService {
             log.warn("Failed to set timeSlotId on Student via reflection: {}", ex.getMessage());
         }
 
-        // Resolve package based on PackageType enum. We try to find an appropriate LessonPackage.
         LessonPackage pkg = resolvePackageForEnum(packageType);
         if (pkg != null) {
             s.assignPackage(pkg);
             if (pkg.getLessonsCount() != null) s.setRemainingLessons(pkg.getLessonsCount());
-            // If manager supplied explicit debt param -> use it; otherwise compute debt = packagePrice (full unpaid)
             BigDecimal computedDebt = (debtParam != null) ? debtParam : pkg.getPrice();
             if (computedDebt == null) computedDebt = BigDecimal.ZERO;
             s.setDebt(computedDebt);
+
+            if (paymentNote != null && !paymentNote.isBlank() && pkg.getPrice() != null) {
+                BigDecimal diff = pkg.getPrice().subtract(computedDebt);
+                if (diff.compareTo(BigDecimal.ZERO) > 0) {
+                    s.setPaymentNote(paymentNote.trim());
+                }
+            }
         } else {
-            // No package found (or UNLIMITED/removed). Respect provided debtParam or set zero.
             s.setPackagePrice(BigDecimal.ZERO);
             s.setPackageCode(null);
             s.setDebt(debtParam == null ? BigDecimal.ZERO : debtParam);
         }
 
-        // generate studentCode if missing (simple algorithm: TMP-... then update to real after save)
         if (s.getStudentCode() == null) {
             s.setStudentCode(generateTemporaryCode(firstName, lastName));
         }
 
         Student saved = studentRepository.save(s);
 
-        // If temporary studentCode used, ensure unique code persists (e.g. S<id>)
         if (saved.getStudentCode() != null && saved.getStudentCode().startsWith("TMP-")) {
-            String real = "S" + (100000 + saved.getId()); // simple deterministic code
+            String real = "S" + (100000 + saved.getId());
             saved.setStudentCode(real);
             saved = studentRepository.save(saved);
         }
@@ -99,11 +93,6 @@ public class StudentService {
         return saved;
     }
 
-    /**
-     * New: create student and assign LessonPackage by packageId (preferred path).
-     *
-     * initialPayment — amount paid at registration (may be null or zero). Debt = package.price - initialPayment.
-     */
     @Transactional
     public Student createStudentWithPackage(String firstName,
                                             String lastName,
@@ -112,7 +101,8 @@ public class StudentService {
                                             Long teacherId,
                                             Long timeSlotId,
                                             Boolean book,
-                                            BigDecimal initialPayment) {
+                                            BigDecimal initialPayment,
+                                            String paymentNote) {
         if (firstName == null || lastName == null) {
             throw new IllegalArgumentException("firstName/lastName required");
         }
@@ -130,7 +120,6 @@ public class StudentService {
                 .updatedAt(Instant.now())
                 .build();
 
-        // Assign timeSlotId if Student has such field (best-effort)
         try {
             s.getClass().getMethod("setTimeSlotId", Long.class).invoke(s, timeSlotId);
         } catch (NoSuchMethodException ignored) {
@@ -138,7 +127,6 @@ public class StudentService {
             log.warn("Failed to set timeSlotId on Student via reflection: {}", ex.getMessage());
         }
 
-        // assign package and capture price/count
         s.assignPackage(pkg);
         if (pkg.getLessonsCount() != null) s.setRemainingLessons(pkg.getLessonsCount());
 
@@ -147,14 +135,16 @@ public class StudentService {
         if (debt.compareTo(BigDecimal.ZERO) < 0) debt = BigDecimal.ZERO;
         s.setDebt(debt);
 
-        // generate studentCode if missing
+        if (paymentNote != null && !paymentNote.isBlank() && paid.compareTo(BigDecimal.ZERO) > 0) {
+            s.setPaymentNote(paymentNote.trim());
+        }
+
         if (s.getStudentCode() == null) {
             s.setStudentCode(generateTemporaryCode(firstName, lastName));
         }
 
         Student saved = studentRepository.save(s);
 
-        // ensure nice code
         if (saved.getStudentCode() != null && saved.getStudentCode().startsWith("TMP-")) {
             String real = "S" + (100000 + saved.getId());
             saved.setStudentCode(real);
@@ -165,9 +155,6 @@ public class StudentService {
         return saved;
     }
 
-    /**
-     * Return count of students for given teacherId.
-     */
     @Transactional(readOnly = true)
     public long countByTeacherId(Long teacherId) {
         if (teacherId == null) return 0L;
@@ -217,10 +204,6 @@ public class StudentService {
         return newDebt;
     }
 
-    /**
-     * Search students by name or student code (partial, case-insensitive).
-     * Used from ManagerController.search flow.
-     */
     @Transactional(readOnly = true)
     public List<Student> searchByNameOrCode(String q) {
         if (q == null || q.trim().isEmpty()) return findAll();
@@ -228,10 +211,6 @@ public class StudentService {
         return studentRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrStudentCodeContainingIgnoreCase(t, t, t);
     }
 
-    /**
-     * Delete student by id.
-     * Safe: catches EmptyResultDataAccessException if id not found.
-     */
     @Transactional
     public void deleteById(Long id) {
         if (id == null) return;
@@ -243,14 +222,6 @@ public class StudentService {
         }
     }
 
-    /**
-     * Decrement remainingLessons by 1 for a student.
-     * - If remainingLessons is null -> return null (not tracked).
-     * - If remainingLessons is zero -> keep 0 and return 0.
-     *
-     * @param studentId id of student
-     * @return new remainingLessons (Integer), or null if not applicable
-     */
     @Transactional
     public Integer consumeLesson(Long studentId) {
         Student s = studentRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("Student not found: " + studentId));
@@ -268,8 +239,6 @@ public class StudentService {
         studentRepository.save(s);
         return s.getRemainingLessons();
     }
-
-    /* ---------- helpers ---------- */
 
     private LessonPackage resolvePackageForEnum(PackageType packageType) {
         if (packageType == null) return null;
