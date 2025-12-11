@@ -44,18 +44,30 @@ public class ManagerController {
     @GetMapping
     public String dashboard(Model model) {
         List<Teacher> teachers = teacherService.findAll();
+
+        // Загрузить всех студентов один раз
+        List<Student> allStudents = studentService.findAll();
+
+        // Общая сумма студентов
+        long totalStudents = allStudents == null ? 0L : allStudents.size();
+
+        // Map teacherUserId -> count
         Map<Long, Long> studentsCountMap = new HashMap<>();
-        for (Teacher t : teachers) {
-            studentsCountMap.put(t.getUserId(), studentService.countByTeacherId(t.getUserId()));
+        if (allStudents != null) {
+            for (Student s : allStudents) {
+                Long tid = s.getTeacherId(); // значение из таблицы students.teacher_id
+                if (tid == null) {
+                    // если хотите учитывать отдельно студентов без учителя, можно логировать или
+                    // использовать специальный ключ (например 0L или -1L). Сейчас считаем, но не ключим.
+                }
+                studentsCountMap.merge(tid, 1L, Long::sum);
+            }
         }
+
         model.addAttribute("teachers", teachers);
         model.addAttribute("studentsCountMap", studentsCountMap);
+        model.addAttribute("totalStudents", totalStudents);
         return "manager/dashboard";
-    }
-
-    @GetMapping("/add_teacher")
-    public String addTeacherForm() {
-        return "manager/add_teacher";
     }
 
     /**

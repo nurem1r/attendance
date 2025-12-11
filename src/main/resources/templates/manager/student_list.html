@@ -59,14 +59,14 @@
                 </td>
 
                 <td>
-                    <a th:href="@{/manager/edit_student/{id}(id=${s.id})}" class="btn-letter" title="Редактировать">✎</a>
+                    <a th:href="@{/manager/edit_student/{id}(id=${s.id})}" class="btn-letter" title="Редактировать">Изменить</a>
 
                     <form th:action="@{/manager/delete_student}" method="post" style="display:inline"
                           th:attr="data-firstname=${s.firstName},data-lastname=${s.lastName}"
                           onsubmit="return confirmDelete(this);">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                         <input type="hidden" name="studentId" th:value="${s.id}"/>
-                        <button class="btn-letter delete" type="submit" title="Удалить">🗑</button>
+                        <button class="btn-letter delete" type="submit" title="Удалить">Удалить</button>
                     </form>
                 </td>
             </tr>

@@ -14,7 +14,7 @@
         </div>
         <div class="header-actions">
             <form th:action="@{/logout}" method="post" th:object="${_csrf}">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <button type="submit" class="btn-consume">Выйти</button>
             </form>
         </div>
@@ -29,17 +29,8 @@
 
         <div class="stat-card">
             <span class="stat-icon">👨‍🎓</span>
-            <!-- Simplified expression: avoid Java stream/lambda in template parsing.
-                 If you prefer the real total of students, compute totalStudents in the controller
-                 and pass it to the model (recommended). For now we fall back to number of teacher-entries. -->
-            <div class="stat-number" th:text="${totalStudents != null ? totalStudents : (studentsCountMap != null ? studentsCountMap.size() : 0)}">0</div>
+            <div class="stat-number" th:text="${totalStudents != null ? totalStudents : 0}">0</div>
             <div class="stat-label">Студентов</div>
-        </div>
-
-        <div class="stat-card">
-            <span class="stat-icon">📊</span>
-            <div class="stat-number" th:text="${activeTeachers != null ? activeTeachers : 0}">0</div>
-            <div class="stat-label">Активных</div>
         </div>
     </div>
 
@@ -63,14 +54,14 @@
                 <div class="teacher-info">
                     <div class="info-row">
                         <span class="info-label">Смена:</span>
-                        <span class="info-value shift-badge" th:text="${t.shift}">FIRST</span>
+                        <span class="info-value shift-badge" th:text="${t.shift != null ? (t.shift.name() == 'FIRST' ? 'ПЕРВАЯ' : (t.shift.name() == 'SECOND' ? 'ВТОРАЯ' : t.shift.name())) : '-'}">-</span>
                     </div>
 
                     <div class="info-row">
                         <span class="info-label">Студентов:</span>
                         <span class="students-count">
-                <span th:text="${studentsCountMap != null && studentsCountMap.containsKey(t.userId) ? studentsCountMap.get(t.userId) : 0}">0</span>
-              </span>
+                            <span th:text="${studentsCountMap != null && studentsCountMap.containsKey(t.userId) ? studentsCountMap.get(t.userId) : 0}">0</span>
+                        </span>
                     </div>
                 </div>
 
