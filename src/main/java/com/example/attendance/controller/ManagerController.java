@@ -88,7 +88,7 @@ public class ManagerController {
 
         // create Teacher profile
         try {
-            Teacher teacher = teacherService.createTeacherForUser(user, firstName, lastName, phone, shift);
+            Teacher teacher = teacherService.createTeacherForUserById(user.getId(), firstName, lastName, phone, shift);
             if (teacher == null || teacher.getUserId() == null) {
                 log.error("Teacher profile creation failed for username={}, userId={}", username, user.getId());
                 // cleanup user to avoid orphaned AppUser without Teacher (optional)
@@ -221,4 +221,85 @@ public class ManagerController {
         }
         return out;
     }
+
+    /* ------------------ NEW: edit / update / delete student ------------------ */
+
+    @GetMapping("/edit_student/{id}")
+    public String editStudentForm(@PathVariable Long id, Model model) {
+        Optional<Student> sOpt = studentService.findById(id);
+        if (sOpt.isEmpty()) {
+            return "redirect:/manager/student_list?error=not_found";
+        }
+        Student s = sOpt.get();
+        model.addAttribute("student", s);
+
+        // packages and teachers for selects
+        List<LessonPackage> packages = lessonPackageRepository.findAll();
+        model.addAttribute("packages", packages);
+        model.addAttribute("teachers", teacherService.findAll());
+
+        // load timeslots for selected teacher (if any)
+        Long teacherId = s.getTeacherId();
+        List<TimeSlot> slots = teacherId == null ? List.of() : timeSlotService.findByTeacherId(teacherId);
+        model.addAttribute("slots", slots);
+
+        return "manager/edit_student";
+    }
+
+    @PostMapping("/edit_student")
+    public String updateStudent(@RequestParam Long id,
+                                @RequestParam String firstName,
+                                @RequestParam String lastName,
+                                @RequestParam(required = false) String phone,
+                                @RequestParam(required = false) Long packageId,
+                                @RequestParam(required = false) Long teacherId,
+                                @RequestParam(required = false) Long timeSlotId,
+                                @RequestParam(required = false) Boolean book,
+                                @RequestParam(required = false) BigDecimal initialPayment,
+                                @RequestParam(required = false) BigDecimal debt) {
+        Optional<Student> sOpt = studentService.findById(id);
+        if (sOpt.isEmpty()) {
+            return "redirect:/manager/student_list?error=not_found";
+        }
+        Student s = sOpt.get();
+
+        s.setFirstName(firstName);
+        s.setLastName(lastName);
+        s.setPhone(phone);
+        s.setTeacherId(teacherId);
+        s.setNeedsBook(Boolean.TRUE.equals(book));
+
+        // set timeSlotId (Student has field timeSlotId)
+        s.setTimeSlotId(timeSlotId);
+
+        if (packageId != null) {
+            LessonPackage pkg = lessonPackageRepository.findById(packageId).orElse(null);
+            if (pkg != null) {
+                s.assignPackage(pkg);
+                if (pkg.getLessonsCount() != null) {
+                    s.setRemainingLessons(pkg.getLessonsCount());
+                }
+                BigDecimal paid = initialPayment == null ? BigDecimal.ZERO : initialPayment;
+                BigDecimal newDebt = pkg.getPrice() == null ? BigDecimal.ZERO : pkg.getPrice().subtract(paid);
+                if (newDebt.compareTo(BigDecimal.ZERO) < 0) newDebt = BigDecimal.ZERO;
+                s.setDebt(newDebt);
+            }
+        } else {
+            // no package change — if explicit debt provided, set it
+            if (debt != null) {
+                s.setDebt(debt);
+            }
+        }
+
+        studentService.updateStudent(s);
+        return "redirect:/manager/student_list?success=updated";
+    }
+
+    @PostMapping("/delete_student")
+    public String deleteStudent(@RequestParam Long studentId) {
+        studentService.deleteById(studentId);
+        return "redirect:/manager/student_list?success=deleted";
+    }
+
+    /* ----------------------------------------------------------------------- */
 }

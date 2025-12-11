@@ -6,12 +6,15 @@ import com.example.attendance.entities.AppUser;
 import com.example.attendance.enums.Shift;
 import com.example.attendance.repository.TeacherRepository;
 import com.example.attendance.repository.TimeSlotRepository;
+import com.example.attendance.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,43 +27,65 @@ public class TeacherService {
 
     private final TeacherRepository teacherRepository;
     private final TimeSlotRepository timeSlotRepository;
+    private final AppUserRepository appUserRepository;
+
+    @PersistenceContext
+    private final EntityManager entityManager;
 
     /**
-     * Создаёт запись Teacher, привязанную к уже существующему AppUser.
-     * Явно проставляем userId (shared PK) перед сохранением и предотвращаем дублирование таймслотов.
+     * Создаёт Teacher, получая управляемый AppUser по id.
+     * Используем EntityManager.persist чтобы гарантировать корректное INSERT с @MapsId.
      */
     @Transactional
-    public Teacher createTeacherForUser(AppUser user, String firstName, String lastName, String phone, Shift shift) {
+    public Teacher createTeacherForUserById(Long userId, String firstName, String lastName, String phone, Shift shift) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId is required");
+        }
+
+        // Получаем реальный управляемый AppUser (не proxy без инициализированного id)
+        AppUser managedUser = appUserRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("AppUser not found for id=" + userId));
+
         Teacher t = Teacher.builder()
                 .firstName(firstName)
                 .lastName(lastName)
                 .phone(phone)
                 .shift(shift)
-                .user(user)
+                .user(managedUser)
                 .build();
 
-        // Ensure shared PK set explicitly
-        if (user != null && user.getId() != null) {
-            t.setUserId(user.getId());
-        } else {
-            log.warn("createTeacherForUser: AppUser or AppUser.id is null (username={})", user == null ? "null" : user.getUsername());
-        }
 
-        Teacher saved = teacherRepository.save(t);
+        // Не устанавливаем t.setUserId(...) вручную — @MapsId позаботится об этом при persist.
+        // Используем EntityManager.persist чтобы Hibernate выполнял INSERT для новой сущности.
+        entityManager.persist(t);
+        entityManager.flush(); // force INSERT now to catch errors immediately
 
-        // Prevent duplicate default timeslots: only create if none exist for this teacher
-        if (saved.getUserId() != null) {
-            List<TimeSlot> existing = timeSlotRepository.findByTeacherIdOrderByStartTime(saved.getUserId());
+
+        // Создаём таймслоты, если нужно
+        if (t.getUserId() != null) {
+            List<TimeSlot> existing = timeSlotRepository.findByTeacherIdOrderByStartTime(t.getUserId());
             if (existing == null || existing.isEmpty()) {
-                createDefaultTimeSlotsForTeacher(saved.getUserId(), shift);
+                createDefaultTimeSlotsForTeacher(t.getUserId(), shift);
             } else {
-                log.info("Default timeslots already exist for teacherId={}, skipping creation", saved.getUserId());
+                log.info("Default timeslots already exist for teacherId={}, skipping creation", t.getUserId());
             }
         } else {
-            log.warn("Saved teacher has null userId; skipping timeslot creation");
+            log.warn("Persisted teacher has null userId; skipping timeslot creation");
         }
 
-        return saved;
+        return t;
+    }
+
+    /**
+     * Существующий метод оставляем для совместимости — он делегирует к createTeacherForUserById
+     */
+    @Transactional
+    public Teacher createTeacherForUser(AppUser user, String firstName, String lastName, String phone, Shift shift) {
+        if (user == null || user.getId() == null) {
+            log.warn("createTeacherForUser: provided AppUser is null or has null id");
+            throw new IllegalArgumentException("AppUser must be persisted and have an id before creating Teacher");
+        }
+        return createTeacherForUserById(user.getId(), firstName, lastName, phone, shift);
     }
 
     private void createDefaultTimeSlotsForTeacher(Long teacherId, Shift shift) {

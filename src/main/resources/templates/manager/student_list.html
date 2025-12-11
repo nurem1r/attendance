@@ -41,42 +41,33 @@
             </thead>
             <tbody>
             <tr th:each="s: ${students}"
-                th:classappend="${s.debt != null and s.debt > 0} ? ' row-debt' : (s.remainingLessons != null and s.remainingLessons < 2 ? ' row-low' : (s.remainingLessons != null and s.remainingLessons < 4 ? ' row-warn' : ''))">
-                <td>
+                th:with="rc=${s.debt != null && s.debt > 0 ? 'row-debt' : (s.remainingLessons != null && s.remainingLessons < 2 ? 'row-low' : (s.remainingLessons != null && s.remainingLessons < 4 ? 'row-warn' : ''))}"
+                th:class="${rc}">
+
+            <td>
                     <div th:text="${s.lastName + ' ' + s.firstName}">ФИО</div>
                     <div class="kv" th:text="${s.phone}">телефон</div>
                 </td>
                 <td th:text="${s.packageCode != null ? s.packageCode : (s.lessonPackage != null ? s.lessonPackage.title : '-') }">Пакет</td>
                 <td th:text="${s.remainingLessons == null ? '-' : s.remainingLessons}">0</td>
                 <td th:text="${s.packagePrice == null ? '-' : s.packagePrice}">0</td>
-                <!-- Новый столбец Долг -->
                 <td th:text="${s.debt == null ? '-' : s.debt}">-</td>
                 <td>
-                    <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status.name() == 'PRESENT'}" class="pill present">Присутствует</span>
-                    <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status.name() == 'LATE'}" class="pill late">Опоздал</span>
-                    <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status.name() == 'ABSENT'}" class="pill absent">Отсутствует</span>
+                    <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status != null and todays[s.id].status.name() == 'PRESENT'}" class="pill present">Присутствует</span>
+                    <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status != null and todays[s.id].status.name() == 'LATE'}" class="pill late">Опоздал</span>
+                    <span th:if="${todays != null and todays.containsKey(s.id) and todays[s.id].status != null and todays[s.id].status.name() == 'ABSENT'}" class="pill absent">Отсутствует</span>
                     <span th:if="${!(todays != null and todays.containsKey(s.id))}" class="pill excused">Не отмечен</span>
                 </td>
+
                 <td>
-                    <form th:action="@{/teacher/attendance/save}" method="post" style="display:inline">
+                    <a th:href="@{/manager/edit_student/{id}(id=${s.id})}" class="btn-letter" title="Редактировать">✎</a>
+
+                    <form th:action="@{/manager/delete_student}" method="post" style="display:inline"
+                          th:attr="data-firstname=${s.firstName},data-lastname=${s.lastName}"
+                          onsubmit="return confirmDelete(this);">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <input type="hidden" th:name="${'status_' + s.id}" value="PRESENT"/>
-                        <button class="btn-letter p" type="submit">P</button>
-                    </form>
-                    <form th:action="@{/teacher/attendance/save}" method="post" style="display:inline">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <input type="hidden" th:name="${'status_' + s.id}" value="LATE"/>
-                        <button class="btn-letter l" type="submit">L</button>
-                    </form>
-                    <form th:action="@{/teacher/attendance/save}" method="post" style="display:inline">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <input type="hidden" th:name="${'status_' + s.id}" value="ABSENT"/>
-                        <button class="btn-letter a" type="submit">A</button>
-                    </form>
-                    <form th:action="@{/teacher/attendance/save}" method="post" style="display:inline">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <input type="hidden" th:name="${'status_' + s.id}" value="EXCUSED"/>
-                        <button class="btn-letter e" type="submit">E</button>
+                        <input type="hidden" name="studentId" th:value="${s.id}"/>
+                        <button class="btn-letter delete" type="submit" title="Удалить">🗑</button>
                     </form>
                 </td>
             </tr>
@@ -84,5 +75,25 @@
         </table>
     </div>
 </div>
+
+<script>
+    function confirmDelete(form) {
+        try {
+            const fn = form.getAttribute('data-firstname') || '';
+            const ln = form.getAttribute('data-lastname') || '';
+            const name = (ln + ' ' + fn).trim();
+            const message = name ? ('Удалить студента ' + name + '?') : 'Удалить студента?';
+            return confirm(message);
+        } catch (e) {
+            return confirm('Удалить студента?');
+        }
+    }
+</script>
+
+<style>
+    .btn-letter { border:none; background:transparent; cursor:pointer; padding:4px 6px; margin-right:6px; text-decoration:none; }
+    .btn-letter.delete { color:#c33; }
+    a.btn-letter { display:inline-block; }
+</style>
 </body>
 </html>
