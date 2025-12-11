@@ -38,7 +38,7 @@
 
                 <td>
                     <!-- Редактировать: переходит на форму редактирования учителя -->
-                    <a th:href="@{/manager/edit_teacher/{id}(id=${t.userId})}" class="btn-letter" title="Редактировать">Изменить</a>
+                    <a th:href="@{/manager/edit_teacher/{id}(id=${t.userId})}" class="btn-letter" title="Редактировать">Изм</a>
 
                     <!-- Удалить: POST форма с CSRF и подтверждением; данные для подтверждения в data-атрибутах -->
                     <form th:action="@{/manager/delete_teacher}" method="post" style="display:inline"
@@ -46,7 +46,7 @@
                           onsubmit="return confirmDelete(this);">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                         <input type="hidden" name="teacherUserId" th:value="${t.userId}"/>
-                        <button class="btn-letter delete" type="submit" title="Удалить учителя">Удалить</button>
+                        <button class="btn-letter delete" type="submit" title="Удалить учителя">Удл</button>
                     </form>
                 </td>
             </tr>
@@ -72,6 +72,10 @@
 <style>
     .btn-letter { border:none; background:transparent; cursor:pointer; padding:4px 6px; margin-right:6px; text-decoration:none; }
     .btn-letter.delete { color:#c33; }
+    a.btn-letter { display:inline-block; }
+
+    .btn-letter { border:none; background:transparent; cursor:pointer; padding:4px 6px; margin-right:6px; text-decoration:none; }
+    .btn-letter { color:#ed8936; }
     a.btn-letter { display:inline-block; }
 </style>
 </body>

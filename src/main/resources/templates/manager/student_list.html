@@ -31,6 +31,7 @@
             <tr>
                 <th>Фамилия и имя</th>
                 <th>Пакет</th>
+                <th>Книга</th>
                 <th>Остаток</th>
                 <th>Стоимость (сом)</th>
                 <th>Долг (сом)</th>
@@ -43,11 +44,27 @@
                 th:with="rc=${s.debt != null && s.debt > 0 ? 'row-debt' : (s.remainingLessons != null && s.remainingLessons < 2 ? 'row-low' : (s.remainingLessons != null && s.remainingLessons < 4 ? 'row-warn' : ''))}"
                 th:class="${rc}">
 
-            <td>
+                <td>
                     <div th:text="${s.lastName + ' ' + s.firstName}">ФИО</div>
                     <div class="kv" th:text="${s.phone}">телефон</div>
                 </td>
-                <td th:text="${s.packageCode != null ? s.packageCode : (s.lessonPackage != null ? s.lessonPackage.title : '-') }">Пакет</td>
+
+                <!-- Map package code to friendly Russian text -->
+                <td>
+                    <span th:with="pkgCode=${s.packageCode != null ? s.packageCode : (s.lessonPackage != null ? s.lessonPackage.code : null)}"
+                          th:switch="${pkgCode}">
+                        <span th:case="'LESSONS_12_MWF'">12 Уроков (Пн-Ср-Пт)</span>
+                        <span th:case="'LESSONS_12_TTS'">12 Уроков (Вт-Чт-Сб)</span>
+                        <span th:case="'LESSONS_24'">24 урока</span>
+                        <span th:case="null">-</span>
+                        <span th:case="*"
+                              th:text="${s.lessonPackage != null ? s.lessonPackage.title : pkgCode}">Пакет</span>
+                    </span>
+                </td>
+
+                <!-- Book column: show Да or Нет -->
+                <td th:text="${s.needsBook != null && s.needsBook == true ? 'Да' : 'Нет'}">Нет</td>
+
                 <td th:text="${s.remainingLessons == null ? '-' : s.remainingLessons}">0</td>
                 <td th:text="${s.packagePrice == null ? '-' : s.packagePrice}">0</td>
                 <td th:text="${s.debt == null ? '-' : s.debt}">-</td>
@@ -59,14 +76,14 @@
                 </td>
 
                 <td>
-                    <a th:href="@{/manager/edit_student/{id}(id=${s.id})}" class="btn-letter" title="Редактировать">Изменить</a>
+                    <a th:href="@{/manager/edit_student/{id}(id=${s.id})}" class="btn-letter" title="Редактировать">Изм</a>
 
                     <form th:action="@{/manager/delete_student}" method="post" style="display:inline"
                           th:attr="data-firstname=${s.firstName},data-lastname=${s.lastName}"
                           onsubmit="return confirmDelete(this);">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                         <input type="hidden" name="studentId" th:value="${s.id}"/>
-                        <button class="btn-letter delete" type="submit" title="Удалить">Удалить</button>
+                        <button class="btn-letter delete" type="submit" title="Удалить">Удл</button>
                     </form>
                 </td>
             </tr>
@@ -88,7 +105,6 @@
                 form.submit();
             }, 300); // submit 300ms after last keystroke
         });
-        // allow Enter to submit immediately
         input.addEventListener('keydown', function(e){
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -113,6 +129,10 @@
 <style>
     .btn-letter { border:none; background:transparent; cursor:pointer; padding:4px 6px; margin-right:6px; text-decoration:none; }
     .btn-letter.delete { color:#c33; }
+    a.btn-letter { display:inline-block; }
+
+    .btn-letter { border:none; background:transparent; cursor:pointer; padding:4px 6px; margin-right:6px; text-decoration:none; }
+    .btn-letter { color:#ed8936; }
     a.btn-letter { display:inline-block; }
 </style>
 </body>
