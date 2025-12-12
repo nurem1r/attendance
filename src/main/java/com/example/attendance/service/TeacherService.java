@@ -94,33 +94,43 @@ public class TeacherService {
 
     private void createDefaultTimeSlotsForTeacher(Long teacherId, Shift shift) {
         List<TimeSlot> slots = new ArrayList<>();
+
+        LocalTime start;
+        int count;
+
         if (shift == Shift.FIRST) {
-            LocalTime start = LocalTime.of(8, 0);
-            for (int i = 0; i < 6; i++) {
-                LocalTime s = start.plusHours(i);
-                LocalTime e = s.plusHours(1);
-                slots.add(TimeSlot.builder()
-                        .teacherId(teacherId)
-                        .startTime(s)
-                        .endTime(e)
-                        .label(String.format("%02d:%02d-%02d:%02d", s.getHour(), s.getMinute(), e.getHour(), e.getMinute()))
-                        .build());
-            }
+            // Первая смена: 08:00 - 14:00 (6 слотов)
+            start = LocalTime.of(8, 0);
+            count = 6;
+        } else if (shift == Shift.SECOND) {
+            // Вторая смена: 14:00 - 20:00 (6 слотов)
+            start = LocalTime.of(14, 0);
+            count = 6;
+        } else if (shift == Shift.FULL) {
+            // Полная смена: 08:00 - 20:00 (12 слотов)
+            start = LocalTime.of(8, 0);
+            count = 12;
         } else {
-            LocalTime start = LocalTime.of(14, 0);
-            for (int i = 0; i < 6; i++) {
-                LocalTime s = start.plusHours(i);
-                LocalTime e = s.plusHours(1);
-                slots.add(TimeSlot.builder()
-                        .teacherId(teacherId)
-                        .startTime(s)
-                        .endTime(e)
-                        .label(String.format("%02d:%02d-%02d:%02d", s.getHour(), s.getMinute(), e.getHour(), e.getMinute()))
-                        .build());
-            }
+            // Защита на случай неизвестной смены — поведение как для первой
+            start = LocalTime.of(8, 0);
+            count = 6;
         }
-        timeSlotRepository.saveAll(slots);
-        log.info("Created {} default timeslots for teacherId={}", slots.size(), teacherId);
+
+        for (int i = 0; i < count; i++) {
+            LocalTime s = start.plusHours(i);
+            LocalTime e = s.plusHours(1);
+            slots.add(TimeSlot.builder()
+                    .teacherId(teacherId)
+                    .startTime(s)
+                    .endTime(e)
+                    .label(String.format("%02d:%02d-%02d:%02d", s.getHour(), s.getMinute(), e.getHour(), e.getMinute()))
+                    .build());
+        }
+
+        if (!slots.isEmpty()) {
+            timeSlotRepository.saveAll(slots);
+        }
+        log.info("Created {} default timeslots for teacherId={} (shift={})", slots.size(), teacherId, shift);
     }
 
     public Teacher findById(Long id) {

@@ -40,9 +40,13 @@
                 <label>
                     Смена
                     <select class="input" name="shift" required>
-                        <option th:each="s : ${T(com.example.attendance.enums.Shift).values()}"
-                                th:value="${s}"
-                                th:text="${s.name() == 'FIRST' ? 'Первая' : (s.name() == 'SECOND' ? 'Вторая' : s.name())}">FIRST</option>
+                        <option value="">-- выбрать --</option>
+                        <option th:each="s : ${shifts}"
+                                th:value="${s.name()}"
+                                th:text="${s.name() == 'FIRST' ? 'Первая' : (s.name() == 'SECOND' ? 'Вторая' : (s.name() == 'FULL' ? 'Полная' : s.name()))}"
+                                th:selected="${teacher != null and teacher.shift != null and teacher.shift.name() == s.name()}">
+                            Шифт
+                        </option>
                     </select>
                 </label>
             </div>

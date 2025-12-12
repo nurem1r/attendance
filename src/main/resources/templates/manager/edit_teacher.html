@@ -45,6 +45,7 @@
                         <option value="">-- выбрать --</option>
                         <option value="FIRST" th:selected="${teacher.shift != null and teacher.shift.name() == 'FIRST'}">ПЕРВАЯ</option>
                         <option value="SECOND" th:selected="${teacher.shift != null and teacher.shift.name() == 'SECOND'}">ВТОРАЯ</option>
+                        <option value="FULL" th:selected="${teacher.shift != null and teacher.shift.name() == 'FULL'}">ПОЛНАЯ</option>
                     </select>
                 </label>
             </div>

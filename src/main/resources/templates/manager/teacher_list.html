@@ -31,8 +31,11 @@
                 </td>
 
                 <!-- Показываем смену по-русски -->
-                <td th:text="${t.shift != null ? (t.shift.name() == 'FIRST' ? 'ПЕРВАЯ' : (t.shift.name() == 'SECOND' ? 'ВТОРАЯ' : t.shift.name())) : '-'}">Смена</td>
-
+                <td th:text="${t.shift != null
+               ? (t.shift == T(com.example.attendance.enums.Shift).FIRST ? 'ПЕРВАЯ'
+                  : (t.shift == T(com.example.attendance.enums.Shift).SECOND ? 'ВТОРАЯ'
+                     : (t.shift == T(com.example.attendance.enums.Shift).FULL ? 'ПОЛНАЯ' : t.shift.name())))
+               : '-'}">Смена</td>
                 <!-- Кол-во студентов из studentsCountMap (ключ — userId) -->
                 <td th:text="${studentsCountMap != null && studentsCountMap.containsKey(t.userId) ? studentsCountMap[t.userId] : 0}">0</td>
 
