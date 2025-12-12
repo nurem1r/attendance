@@ -44,6 +44,7 @@
                     Телефон
                     <input class="input" type="text" name="phone" th:value="${student.phone}"/>
                 </label>
+
                 <label style="flex:1">
                     Учитель
                     <select class="input" name="teacherId" id="teacherSelect" required>
@@ -51,6 +52,14 @@
                         <option th:each="t : ${teachers}" th:value="${t.userId}"
                                 th:text="${t.firstName + ' ' + t.lastName}"
                                 th:selected="${student.teacherId != null and t.userId == student.teacherId}">Учитель</option>
+                    </select>
+                </label>
+
+                <label style="width:220px">
+                    Книга
+                    <select class="input" name="book" id="bookSelect">
+                        <option value="false" th:selected="${student.needsBook == false}">Нет</option>
+                        <option value="true" th:selected="${student.needsBook}">Да</option>
                     </select>
                 </label>
             </div>
