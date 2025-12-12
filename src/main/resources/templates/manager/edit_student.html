@@ -158,12 +158,12 @@
 
         // init
         document.addEventListener('DOMContentLoaded', function(){
-            initialPayment.value = initialPayment.value || '0';
+            if (initialPayment) initialPayment.value = initialPayment.value || '0';
             computeDebtAndUpdateUI();
         });
 
-        packageSelect?.addEventListener('change', computeDebtAndUpdateUI);
-        initialPayment?.addEventListener('input', computeDebtAndUpdateUI);
+        if (packageSelect) packageSelect.addEventListener('change', computeDebtAndUpdateUI);
+        if (initialPayment) initialPayment.addEventListener('input', computeDebtAndUpdateUI);
     })();
 </script>
 </body>

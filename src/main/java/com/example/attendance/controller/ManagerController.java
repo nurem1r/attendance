@@ -55,10 +55,8 @@ public class ManagerController {
         Map<Long, Long> studentsCountMap = new HashMap<>();
         if (allStudents != null) {
             for (Student s : allStudents) {
-                Long tid = s.getTeacherId(); // значение из таблицы students.teacher_id
+                Long tid = s.getTeacherId();
                 if (tid == null) {
-                    // если хотите учитывать отдельно студентов без учителя, можно логировать или
-                    // использовать специальный ключ (например 0L или -1L). Сейчас считаем, но не ключим.
                 }
                 studentsCountMap.merge(tid, 1L, Long::sum);
             }
@@ -88,7 +86,6 @@ public class ManagerController {
                              @RequestParam com.example.attendance.enums.Shift shift,
                              @RequestParam String username,
                              @RequestParam String password) {
-        // check username existence
         if (appUserService.findByUsernameSafe(username) != null) {
             log.warn("Attempt to create teacher with existing username={}", username);
             return "redirect:/manager?error=username_exists";
@@ -105,7 +102,6 @@ public class ManagerController {
             return "redirect:/manager?error=user_create";
         }
 
-        // create Teacher profile
         try {
             Teacher teacher = teacherService.createTeacherForUserById(user.getId(), firstName, lastName, phone, shift);
             if (teacher == null || teacher.getUserId() == null) {
@@ -135,11 +131,9 @@ public class ManagerController {
 
     @GetMapping("/add_student")
     public String addStudentForm(Model model) {
-        // Pass actual LessonPackage entities to the template so UI can show friendly titles/prices.
         List<LessonPackage> packages = lessonPackageRepository.findAll();
         model.addAttribute("packages", packages);
 
-        // Keep teachers for the select
         model.addAttribute("teachers", teacherService.findAll());
         return "manager/add_student";
     }
@@ -176,11 +170,9 @@ public class ManagerController {
             students = studentService.findAll();
         }
 
-        // teacher map for display
         List<Teacher> teachers = teacherService.findAll();
         Map<Long, Teacher> teacherMap = teachers.stream().collect(Collectors.toMap(Teacher::getUserId, t -> t));
 
-        // missed and payments maps
         Map<Long, Long> missedMap = new HashMap<>();
         Map<Long, List<com.example.attendance.entities.Payment>> paymentsMap = new HashMap<>();
         for (Student s : students) {
@@ -193,7 +185,6 @@ public class ManagerController {
         model.addAttribute("teacherMap", teacherMap);
         model.addAttribute("missedMap", missedMap);
         model.addAttribute("paymentsMap", paymentsMap);
-        // expose current search query so template can keep input value
         model.addAttribute("q", q);
 
         return "manager/student_list";
@@ -201,10 +192,8 @@ public class ManagerController {
 
     @GetMapping("/teacher_list")
     public String teacherList(Model model) {
-        // load teachers
         List<Teacher> teachers = teacherService.findAll();
 
-        // build students count map keyed by teacher.userId (safe against null ids)
         Map<Long, Long> studentsCountMap = new HashMap<>();
         for (Teacher t : teachers) {
             Long tid = t.getUserId();
@@ -213,7 +202,6 @@ public class ManagerController {
                     long cnt = studentService.countByTeacherId(tid);
                     studentsCountMap.put(tid, cnt);
                 } catch (Exception ex) {
-                    // in case of repository error, log and default to 0
                     log.warn("Failed to count students for teacherId={}", tid, ex);
                     studentsCountMap.put(tid, 0L);
                 }
@@ -293,8 +281,12 @@ public class ManagerController {
                                 @RequestParam(required = false) Boolean book,
                                 @RequestParam(required = false) BigDecimal initialPayment,
                                 @RequestParam(required = false) String paymentNote) {
+        log.info("updateStudent called: id={}, first='{}', last='{}', phone='{}', packageId={}, teacherId={}, timeSlotId={}, book={}, initialPayment={}, paymentNote={}",
+                id, firstName, lastName, phone, packageId, teacherId, timeSlotId, book, initialPayment, (paymentNote == null ? null : paymentNote.trim()));
+
         Optional<Student> sOpt = studentService.findById(id);
         if (sOpt.isEmpty()) {
+            log.warn("updateStudent: student not found id={}", id);
             return "redirect:/manager/student_list?error=not_found";
         }
         Student s = sOpt.get();
@@ -305,21 +297,18 @@ public class ManagerController {
         s.setTeacherId(teacherId);
         s.setNeedsBook(Boolean.TRUE.equals(book));
 
-        // set timeSlotId (Student has field timeSlotId)
         s.setTimeSlotId(timeSlotId);
 
-        // previous debt preserved
         BigDecimal previousDebt = s.getDebt() == null ? BigDecimal.ZERO : s.getDebt();
 
         if (packageId != null) {
             LessonPackage pkg = lessonPackageRepository.findById(packageId).orElse(null);
             if (pkg != null) {
-                // determine if package actually changed
                 Long currentPkgId = s.getLessonPackage() != null ? s.getLessonPackage().getId() : null;
                 boolean changed = (currentPkgId == null && packageId != null) || (currentPkgId != null && !currentPkgId.equals(packageId));
 
                 if (changed) {
-                    // assign new package and remaining lessons
+                    // если выбран новый пакет — старая логика: назначаем пакет, считаем долг по пакету
                     s.assignPackage(pkg);
                     if (pkg.getLessonsCount() != null) {
                         s.setRemainingLessons(pkg.getLessonsCount());
@@ -330,26 +319,73 @@ public class ManagerController {
                     BigDecimal newPackageDebt = packagePrice.subtract(paid);
                     if (newPackageDebt.compareTo(BigDecimal.ZERO) < 0) newPackageDebt = BigDecimal.ZERO;
 
-                    // sum with previous debt
                     BigDecimal resultingDebt = previousDebt.add(newPackageDebt);
                     s.setDebt(resultingDebt);
 
-                    // save payment note if provided (only relevant when payment flow happened)
+                    // save payment note if provided
                     if (paymentNote != null && !paymentNote.isBlank()) {
                         s.setPaymentNote(paymentNote.trim());
                     }
+
+                    log.info("updateStudent: package changed for id={} -> newDebt={}", id, s.getDebt());
                 } else {
-                    // same package selected: do not change debt, leave paymentNote unchanged
+                    // если пакет тот же — раньше платёж игнорировался. Сейчас: если есть initialPayment > 0, применяем его.
+                    if (initialPayment != null && initialPayment.compareTo(BigDecimal.ZERO) > 0) {
+                        try {
+                            BigDecimal newDebt = studentService.applyPayment(s.getId(), initialPayment);
+                            // обновим сущность s с новым долгом (applyPayment уже сохранил)
+                            s.setDebt(newDebt);
+                            log.info("updateStudent: applied payment {} for student {} -> newDebt={}", initialPayment, s.getId(), newDebt);
+                        } catch (Exception ex) {
+                            log.error("updateStudent: failed to apply payment for studentId={} amount={}", s.getId(), initialPayment, ex);
+                            return "redirect:/manager/student_list?error=payment_failed";
+                        }
+                        if (paymentNote != null && !paymentNote.isBlank()) {
+                            s.setPaymentNote(paymentNote.trim());
+                        }
+                    } else {
+                        log.info("updateStudent: same package and no payment for id={}", id);
+                    }
                 }
+            } else {
+                log.warn("updateStudent: package not found id={}", packageId);
             }
         } else {
-            // no package change: do not change debt (manual debt editing removed)
+            // no package provided: возможно пользователь редактирует только другие поля.
+            // Если пришёл initialPayment — применим его к долгу.
+            if (initialPayment != null && initialPayment.compareTo(BigDecimal.ZERO) > 0) {
+                try {
+                    BigDecimal newDebt = studentService.applyPayment(s.getId(), initialPayment);
+                    s.setDebt(newDebt);
+                    log.info("updateStudent: applied payment {} for student {} (no package change) -> newDebt={}", initialPayment, s.getId(), newDebt);
+                } catch (Exception ex) {
+                    log.error("updateStudent: failed to apply payment for studentId={} amount={}", s.getId(), initialPayment, ex);
+                    return "redirect:/manager/student_list?error=payment_failed";
+                }
+                if (paymentNote != null && !paymentNote.isBlank()) {
+                    s.setPaymentNote(paymentNote.trim());
+                }
+            } else {
+                log.info("updateStudent: no packageId and no payment for id={}", id);
+            }
         }
 
+        // Финальное сохранение (если applyPayment уже сохранён, это сделает дополнительный save — безопасно)
         studentService.updateStudent(s);
         return "redirect:/manager/student_list?success=updated";
     }
 
+    // helper
+    private Long parseLongOrNull(String s) {
+        if (s == null) return null;
+        s = s.trim();
+        if (s.isEmpty()) return null;
+        try {
+            return Long.valueOf(s);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
     @PostMapping("/delete_student")
     public String deleteStudent(@RequestParam Long studentId) {
         studentService.deleteById(studentId);

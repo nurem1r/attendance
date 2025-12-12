@@ -14,14 +14,12 @@
         </div>
         <div class="header-actions">
             <a th:href="@{/manager}" class="btn-consume">Назад</a>
-            <!-- (ранее была форма logout здесь — заменено на кнопку Назад по запросу) -->
         </div>
     </div>
 
     <div class="controls">
-        <!-- Поиск: GET форма, подставляем текущее значение q -->
         <form id="searchForm" th:action="@{/manager/student_list}" method="get" style="display:inline">
-            <input class="input" id="search" name="q" th:value="${q}" placeholder="Поиск по имени или коду..." autocomplete="off" />
+            <input class="input" id="search" name="q" th:value="${q}" placeholder="Поиск по имени..." autocomplete="off" />
         </form>
     </div>
 
@@ -49,7 +47,6 @@
                     <div class="kv" th:text="${s.phone}">телефон</div>
                 </td>
 
-                <!-- Map package code to friendly Russian text -->
                 <td>
                     <span th:with="pkgCode=${s.packageCode != null ? s.packageCode : (s.lessonPackage != null ? s.lessonPackage.code : null)}"
                           th:switch="${pkgCode}">
@@ -103,7 +100,7 @@
             if (timer) clearTimeout(timer);
             timer = setTimeout(() => {
                 form.submit();
-            }, 300); // submit 300ms after last keystroke
+            }, 300);
         });
         input.addEventListener('keydown', function(e){
             if (e.key === 'Enter') {
