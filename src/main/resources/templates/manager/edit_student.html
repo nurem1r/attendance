@@ -6,6 +6,9 @@
     <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
     <style>
         .hidden { display:none; }
+        .form-row { display:flex; gap:12px; align-items:flex-end; margin-bottom:12px; }
+        .input { padding:8px; border:1px solid #e2e8f0; border-radius:6px; width:100%; }
+        label { display:flex; flex-direction:column; font-weight:600; gap:6px; }
     </style>
 </head>
 <body>
@@ -26,22 +29,22 @@
             <input type="hidden" name="id" th:value="${student.id}"/>
 
             <div class="form-row">
-                <label>
+                <label style="flex:1">
                     Имя
                     <input class="input" type="text" name="firstName" th:value="${student.firstName}" required />
                 </label>
-                <label>
+                <label style="flex:1">
                     Фамилия
                     <input class="input" type="text" name="lastName" th:value="${student.lastName}" required />
                 </label>
             </div>
 
             <div class="form-row">
-                <label>
+                <label style="flex:1">
                     Телефон
                     <input class="input" type="text" name="phone" th:value="${student.phone}"/>
                 </label>
-                <label>
+                <label style="flex:1">
                     Учитель
                     <select class="input" name="teacherId" id="teacherSelect" required>
                         <option value="">-- выберите учителя --</option>
@@ -66,10 +69,10 @@
                     </select>
                 </label>
 
-                <!-- Сделано видимым по умолчанию, чтобы можно было редактировать платеж -->
-                <label id="initialPaymentLabel">
+                <!-- Payment field: теперь всегда видно -->
+                <label id="initialPaymentLabel" style="width:220px">
                     Платёж (сом)
-                    <input class="input" id="initialPayment" name="initialPayment" type="number" step="0.01" />
+                    <input class="input" id="initialPayment" name="initialPayment" type="number" step="0.01" value="0" />
                 </label>
             </div>
 
@@ -91,7 +94,7 @@
                 </label>
             </div>
 
-            <!-- Заметка по оплате: скрыта до тех пор, пока был введён платёж -->
+            <!-- Заметка по оплате: показывается только если есть платёж > 0 -->
             <div class="form-row" id="paymentNoteRow" style="margin-top:12px; display:none;">
                 <label style="flex:1">
                     Заметка по оплате
@@ -111,7 +114,6 @@
     (function(){
         const packageSelect = document.getElementById('packageSelect');
         const initialPayment = document.getElementById('initialPayment');
-        const initialPaymentLabel = document.getElementById('initialPaymentLabel');
         const debtInput = document.getElementById('debtInput');
         const paymentNoteRow = document.getElementById('paymentNoteRow');
 
@@ -126,55 +128,42 @@
             return Number.isFinite(price) ? price : 0;
         }
 
-        function hideInitialPayment() {
-            initialPaymentLabel.classList.add('hidden');
-            initialPayment.value = '';
-            paymentNoteRow.style.display = 'none';
-        }
+        function computeDebtAndUpdateUI() {
+            const selectedVal = packageSelect ? packageSelect.value : '';
+            const selectedId = selectedVal ? parseInt(selectedVal, 10) : 0;
+            const pkgPrice = getSelectedPackagePrice();
+            const paid = parseFloat(initialPayment.value || '0') || 0;
 
-        function showInitialPayment() {
-            initialPaymentLabel.classList.remove('hidden');
-        }
+            let resultingDebt;
 
-        // when package selection changes
-        function onPackageChange() {
-            const selectedVal = packageSelect.value;
-            if (!selectedVal) {
-                hideInitialPayment();
-                debtInput.value = originalDebt.toFixed(2);
-                return;
+            // If a NEW package selected (selected and different from current)
+            if (selectedId && currentPkgId && selectedId === currentPkgId) {
+                // same package selected -> payment reduces existing debt
+                resultingDebt = originalDebt - paid;
+            } else if (selectedId) {
+                // new package -> payment goes to package first, remaining package cost is added to debt
+                const remainingPackageCost = Math.max(0, (pkgPrice || 0) - paid);
+                resultingDebt = originalDebt + remainingPackageCost;
+            } else {
+                // no package selected -> payment reduces existing debt
+                resultingDebt = originalDebt - paid;
             }
 
-            const selectedId = parseInt(selectedVal, 10);
-            const pkgPrice = getSelectedPackagePrice();
+            // allow negative (overpayment)
+            debtInput.value = Number.isFinite(resultingDebt) ? resultingDebt.toFixed(2) : originalDebt.toFixed(2);
 
-            // теперь поле платежа показывается и доступно для редактирования даже если выбран текущий пакет
-            showInitialPayment();
-            const paid = parseFloat(initialPayment.value || '0') || 0;
-            const packageDebt = Math.max(0, (pkgPrice || 0) - paid);
-            const resultingDebt = originalDebt + packageDebt;
-            debtInput.value = resultingDebt.toFixed(2);
-            paymentNoteRow.style.display = 'none';
+            // show/hide payment note when payment > 0
+            paymentNoteRow.style.display = (paid && paid > 0) ? 'flex' : 'none';
         }
 
-        function onInitialPaymentChange() {
-            const pkgPrice = getSelectedPackagePrice();
-            const paid = parseFloat(initialPayment.value || '0') || 0;
-            const packageDebt = Math.max(0, (pkgPrice || 0) - paid);
-            const resultingDebt = originalDebt + packageDebt;
-            debtInput.value = resultingDebt.toFixed(2);
-
-            const showNote = (!isNaN(paid) && paid > 0) || (initialPayment.value && initialPayment.value.trim() !== '');
-            paymentNoteRow.style.display = showNote ? 'flex' : 'none';
-        }
-
+        // init
         document.addEventListener('DOMContentLoaded', function(){
-            if (!packageSelect || !initialPayment || !debtInput) return;
-            onPackageChange();
+            initialPayment.value = initialPayment.value || '0';
+            computeDebtAndUpdateUI();
         });
 
-        packageSelect?.addEventListener('change', onPackageChange);
-        initialPayment?.addEventListener('input', onInitialPaymentChange);
+        packageSelect?.addEventListener('change', computeDebtAndUpdateUI);
+        initialPayment?.addEventListener('input', computeDebtAndUpdateUI);
     })();
 </script>
 </body>
